@@ -220,6 +220,8 @@ async function onAuth(session){
   document.querySelector('.tab[data-view="teacher"]').hidden=!isTeacher();
   setTab("home");render();
 }
+const SUBJECTS=[["I","科目Ⅰ 証券分析とポートフォリオ・マネジメント"],["II","科目Ⅱ 財務分析"],["III","科目Ⅲ 市場と経済の分析"]];
+const subjectOf=code=>{const u=S.points[code]?.unit_key||"";return u?u.split("-")[0]:(String(code).startsWith("10")?"I":"")};
 const usedPoints=()=>[...new Set(S.questions.map(q=>q.point_code))].sort();
 async function loadMine(){
   const rows=await fetchAll(()=>S.sb.from("attempts").select("session_id,question_id,choice,is_correct,time_ms,answered_at,sessions(mode)").eq("user_id",S.session.user.id).order("answered_at"));
@@ -354,8 +356,9 @@ function renderHome(){
     ${S.questions.length?`<div class="modes">
       <div class="mode"><h2>練習モード <span class="pill p">ランキング対象外</span></h2>
         <p class="muted">1問ごとに正誤と解説、みんなの正答率を表示します。論点をしぼって練習できます。</p>
-        <label class="f">出題範囲<select id="pp"><option value="">すべての論点（${S.questions.length}問）</option>
-          ${pts.map(c=>`<option value="${esc(c)}" ${S.practicePoint===c?"selected":""}>${esc(plabel(c))}（${S.questions.filter(q=>q.point_code===c).length}問）</option>`).join("")}</select></label>
+        <label class="f">出題範囲<select id="pp"><option value="">すべて（${S.questions.length}問）</option>
+          ${SUBJECTS.map(([k,l])=>{const n=S.questions.filter(q=>subjectOf(q.point_code)===k).length;return n?`<option value="s:${k}" ${S.practicePoint==="s:"+k?"selected":""}>${esc(l)}（${n}問）</option>`:""}).join("")}
+          ${S.practicePoint&&!S.practicePoint.startsWith("s:")?`<option value="${esc(S.practicePoint)}" selected>${esc(plabel(S.practicePoint))}</option>`:""}</select></label>
         <button class="btn accent" id="startP">練習をはじめる</button></div>
       <div class="mode"><h2>試験モード <span class="pill e">ランキング対象</span></h2>
         <p class="muted">全${S.questions.length}問を続けて解き、最後にまとめて採点します。正答率と解答時間でランキングを競います。</p>
@@ -394,7 +397,7 @@ function renderHome(){
 let tick=null;
 async function startQuiz(mode,point){
   document.querySelectorAll("#startP,#startE").forEach(b=>b.disabled=true);
-  const pool=S.questions.filter(q=>mode==="exam"||!point||q.point_code===point);
+  const pool=S.questions.filter(q=>mode==="exam"||!point||(point.startsWith("s:")?subjectOf(q.point_code)===point.slice(2):q.point_code===point));
   const {data,error}=await S.sb.from("sessions").insert({user_id:S.session.user.id,mode,question_count:pool.length}).select("id").single();
   if(error){S.error="開始できませんでした："+error.message;render();return}
   await loadStats().catch(()=>{});
