@@ -14,7 +14,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.questions (
   id          text primary key,
-  topic       text not null,             -- 論点（分析の単位）
+  topic       text,                      -- （旧）論点名。現在は point_code で整理
   level       text not null default '標準', -- 基礎 / 標準 / 応用
   stem        text not null,             -- 問題文
   answer      boolean not null,          -- true=○ false=×
@@ -45,6 +45,39 @@ create table if not exists public.attempts (
 create index if not exists attempts_user_idx on public.attempts(user_id);
 create index if not exists attempts_question_idx on public.attempts(question_id);
 
+
+-- ---------- 学習ポイント（テキストの「この章で学ぶこと」の番号） ----------
+create table if not exists public.points (
+  code        text primary key,          -- 例: 1006
+  chapter     int  not null,
+  title       text not null,             -- 画面に出す短い名前
+  description text,                      -- テキストの学習ポイントの文
+  video_url   text,                      -- 解説動画（YouTubeなど）
+  sort        int  not null default 0
+);
+alter table public.questions add column if not exists point_code text references public.points(code);
+alter table public.questions alter column topic drop not null;
+alter table public.sessions  add column if not exists mode text not null default 'practice';
+alter table public.sessions  add column if not exists question_count int;
+do $$ begin
+  alter table public.sessions add constraint sessions_mode_chk check (mode in ('practice','exam'));
+exception when duplicate_object then null; end $$;
+alter table public.profiles  add column if not exists show_in_ranking boolean not null default true;
+
+-- 試験モードは「その時点の全問」を解く。問題数はサーバー側で確定させる（ランキングの公平性のため）
+create or replace function public.sessions_before_insert() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  new.user_id := auth.uid();
+  if new.mode = 'exam' then
+    new.question_count := (select count(*) from public.questions where active);
+  end if;
+  return new;
+end $$;
+drop trigger if exists sessions_before_insert on public.sessions;
+create trigger sessions_before_insert before insert on public.sessions
+  for each row execute function public.sessions_before_insert();
+
 -- ---------- 講師かどうか ----------
 create or replace function public.is_teacher() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -66,10 +99,11 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- ---------- 受講者向け：正答を含まない問題一覧 ----------
+drop function if exists public.get_questions();
 create or replace function public.get_questions()
-returns table(id text, topic text, level text, stem text, sort int)
+returns table(id text, point_code text, level text, stem text, sort int)
 language sql stable security definer set search_path = public as $$
-  select q.id, q.topic, q.level, q.stem, q.sort from public.questions q
+  select q.id, q.point_code, q.level, q.stem, q.sort from public.questions q
   where q.active and auth.uid() is not null order by q.sort, q.id;
 $$;
 
@@ -93,11 +127,83 @@ begin
     where a.session_id = p_session and a.question_id = p_question;
 end $$;
 
+
+-- ---------- 全体の成績（個人が特定されない集計値のみ） ----------
+-- 時間は中央値。5分超（離席とみなす）は時間の集計から除外
+drop function if exists public.get_question_stats();
+create or replace function public.get_question_stats()
+returns table(question_id text, n bigint, accuracy numeric, median_ms numeric)
+language sql stable security definer set search_path = public as $$
+  select a.question_id, count(*), round(avg(a.is_correct::int)::numeric, 4),
+         round((percentile_cont(0.5) within group (order by a.time_ms) filter (where a.time_ms <= 300000))::numeric)
+  from public.attempts a where auth.uid() is not null group by a.question_id;
+$$;
+
+drop function if exists public.get_point_stats();
+create or replace function public.get_point_stats()
+returns table(point_code text, n bigint, accuracy numeric, median_ms numeric)
+language sql stable security definer set search_path = public as $$
+  select q.point_code, count(*), round(avg(a.is_correct::int)::numeric, 4),
+         round((percentile_cont(0.5) within group (order by a.time_ms) filter (where a.time_ms <= 300000))::numeric)
+  from public.attempts a join public.questions q on q.id = a.question_id
+  where auth.uid() is not null group by q.point_code;
+$$;
+
+-- ---------- 試験モードのランキング ----------
+-- 各自のベスト記録（全問解答済みの試験）で、正答率が高い順 → 同率なら合計時間が短い順
+drop function if exists public.get_exam_ranking();
+create or replace function public.get_exam_ranking()
+returns table(rank bigint, display_name text, correct int, total int, total_ms bigint, median_ms numeric, finished_at timestamptz, is_me boolean)
+language sql stable security definer set search_path = public as $$
+  with s as (
+    select s.id, s.user_id, s.question_count, s.finished_at,
+           count(a.id)::int as answered,
+           count(a.id) filter (where a.is_correct)::int as correct,
+           coalesce(sum(a.time_ms), 0)::bigint as total_ms,
+           percentile_cont(0.5) within group (order by a.time_ms) as median_ms
+    from public.sessions s join public.attempts a on a.session_id = s.id
+    where s.mode = 'exam' and s.finished_at is not null and s.question_count > 0
+    group by s.id
+  ), best as (
+    select distinct on (s.user_id) s.* from s
+    where s.answered >= s.question_count
+    order by s.user_id, s.correct::numeric / s.question_count desc, s.total_ms asc
+  )
+  select rank() over (order by b.correct::numeric / b.question_count desc, b.total_ms asc),
+         coalesce(nullif(p.display_name, ''), '名前未登録'), b.correct, b.question_count, b.total_ms,
+         round(b.median_ms::numeric), b.finished_at, b.user_id = auth.uid()
+  from best b join public.profiles p on p.id = b.user_id
+  where auth.uid() is not null and (p.show_in_ranking or b.user_id = auth.uid())
+  order by 1, b.finished_at limit 100;
+$$;
+
+-- ---------- 利用回数ランキング（直近 p_days 日の解答数） ----------
+drop function if exists public.get_activity_ranking(int);
+create or replace function public.get_activity_ranking(p_days int default 30)
+returns table(rank bigint, display_name text, answers bigint, sessions bigint, is_me boolean)
+language sql stable security definer set search_path = public as $$
+  select rank() over (order by count(*) desc), coalesce(nullif(p.display_name, ''), '名前未登録'),
+         count(*), count(distinct a.session_id), a.user_id = auth.uid()
+  from public.attempts a join public.profiles p on p.id = a.user_id
+  where auth.uid() is not null and a.answered_at > now() - make_interval(days => greatest(1, least(p_days, 365)))
+    and (p.show_in_ranking or a.user_id = auth.uid())
+  group by a.user_id, p.display_name
+  order by 1 limit 100;
+$$;
+
 -- ---------- 行レベルセキュリティ（RLS） ----------
 alter table public.profiles  enable row level security;
 alter table public.questions enable row level security;
 alter table public.sessions  enable row level security;
 alter table public.attempts  enable row level security;
+alter table public.points    enable row level security;
+
+drop policy if exists "points: ログインしていれば読める" on public.points;
+create policy "points: ログインしていれば読める" on public.points for select
+  using (auth.uid() is not null);
+drop policy if exists "points: 講師が編集" on public.points;
+create policy "points: 講師が編集" on public.points for all
+  using (public.is_teacher()) with check (public.is_teacher());
 
 drop policy if exists "profiles: 本人か講師が読める" on public.profiles;
 create policy "profiles: 本人か講師が読める" on public.profiles for select
@@ -107,7 +213,7 @@ create policy "profiles: 本人が名前を変更" on public.profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 -- 役割(role)は本人が変えられないよう、更新できる列を名前だけに限定
 revoke update on public.profiles from anon, authenticated;
-grant update (display_name) on public.profiles to authenticated;
+grant update (display_name, show_in_ranking) on public.profiles to authenticated;
 
 drop policy if exists "questions: 講師が全操作" on public.questions;
 create policy "questions: 講師が全操作" on public.questions for all
@@ -129,6 +235,14 @@ create policy "attempts: 本人か講師が読める" on public.attempts for sel
   using (user_id = auth.uid() or public.is_teacher());
 
 grant execute on function public.get_questions() to authenticated;
+grant execute on function public.get_question_stats() to authenticated;
+grant execute on function public.get_point_stats() to authenticated;
+grant execute on function public.get_exam_ranking() to authenticated;
+grant execute on function public.get_activity_ranking(int) to authenticated;
+revoke execute on function public.get_question_stats() from anon, public;
+revoke execute on function public.get_point_stats() from anon, public;
+revoke execute on function public.get_exam_ranking() from anon, public;
+revoke execute on function public.get_activity_ranking(int) from anon, public;
 grant execute on function public.submit_answer(uuid, text, boolean, int) to authenticated;
 revoke execute on function public.submit_answer(uuid, text, boolean, int) from anon, public;
 revoke execute on function public.get_questions() from anon, public;
