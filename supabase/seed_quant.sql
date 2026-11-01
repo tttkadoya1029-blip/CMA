@@ -1,7 +1,7 @@
 -- ===== 科目Ⅲ 数量分析と確率・統計の基礎（第3回・100問）=====
 -- dev/gen_quant.py から生成。schema.sql を実行したあとに実行してください。何度実行しても同じ結果になります（同じidは上書き）
 insert into public.units (key, subject, no, title, sort) values
-('III-3','科目Ⅲ 市場と経済の分析',3,'数量分析と確率・統計の基礎',303)
+('III-3','科目Ⅲ 数量分析',3,'数量分析と確率・統計の基礎',303)
 on conflict (key) do update set subject=excluded.subject, no=excluded.no, title=excluded.title, sort=excluded.sort;
 
 insert into public.points (code, unit_key, chapter, title, description, sort) values
