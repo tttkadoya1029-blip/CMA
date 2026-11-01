@@ -309,7 +309,7 @@ if __name__ == '__main__' and len(Q) == 100:
     out.append('-- ===== 科目Ⅲ 数量分析と確率・統計の基礎（第3回・100問）=====')
     out.append('-- dev/gen_quant.py から生成。schema.sql を実行したあとに実行してください。何度実行しても同じ結果になります（同じidは上書き）')
     out.append("insert into public.units (key, subject, no, title, sort) values")
-    out.append("('III-3','科目Ⅲ 市場と経済の分析',3,'数量分析と確率・統計の基礎',303)")
+    out.append("('III-3','科目Ⅲ 数量分析',3,'数量分析と確率・統計の基礎',303)")
     out.append("on conflict (key) do update set subject=excluded.subject, no=excluded.no, title=excluded.title, sort=excluded.sort;\n")
     out.append("insert into public.points (code, unit_key, chapter, title, description, sort) values")
     out.append(",\n".join(f"({sqlstr(c)},'III-3',{ch},{sqlstr(t)},{sqlstr(d)},{c})" for c,ch,t,d in POINTS))
