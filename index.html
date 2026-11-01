@@ -220,8 +220,8 @@ async function onAuth(session){
   document.querySelector('.tab[data-view="teacher"]').hidden=!isTeacher();
   setTab("home");render();
 }
-const SUBJECTS=[["I","科目Ⅰ 証券分析とポートフォリオ・マネジメント"],["II","科目Ⅱ 財務分析"],["III","科目Ⅲ 市場と経済の分析"]];
-const subjectOf=code=>{const u=S.points[code]?.unit_key||"";return u?u.split("-")[0]:(String(code).startsWith("10")?"I":"")};
+const SUBJECTS=[["I","科目Ⅰ 証券分析とポートフォリオ・マネジメント"],["II","科目Ⅱ 財務分析"],["III","科目Ⅲ 市場と経済の分析"],["III-Q","科目Ⅲ 数量分析"]];
+const subjectOf=code=>{const u=S.points[code]?.unit_key||"";return u==="III-3"?"III-Q":u?u.split("-")[0]:(String(code).startsWith("10")?"I":"")};
 const usedPoints=()=>[...new Set(S.questions.map(q=>q.point_code))].sort();
 async function loadMine(){
   const rows=await fetchAll(()=>S.sb.from("attempts").select("session_id,question_id,choice,is_correct,time_ms,answered_at,sessions(mode)").eq("user_id",S.session.user.id).order("answered_at"));
