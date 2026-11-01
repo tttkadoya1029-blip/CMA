@@ -64,13 +64,34 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 alter table public.profiles  add column if not exists show_in_ranking boolean not null default true;
 
+-- ---------- 科目と回（テキストの冊子単位）。受講者はここから勉強する範囲を選ぶ ----------
+create table if not exists public.units (
+  key     text primary key,              -- 例: II-1（科目Ⅱ 第1回）
+  subject text not null,                 -- 例: 科目Ⅱ 財務分析
+  no      int  not null,                 -- 第◯回
+  title   text not null,
+  sort    int  not null default 0
+);
+insert into public.units (key, subject, no, title, sort) values
+  ('I-1','科目Ⅰ 株式分析',1,'株式市場の仕組みとファンダメンタル分析',101)
+on conflict (key) do nothing;
+alter table public.points add column if not exists unit_key text references public.units(key);
+update public.points set unit_key='I-1' where unit_key is null and code like '10%';
+-- 試験の範囲（units.key）。試験モードは「その回の全問」を解き、ランキングも回ごと
+alter table public.sessions add column if not exists scope text;
+update public.sessions set scope='I-1' where scope is null and mode='exam';
+
 -- 試験モードは「その時点の全問」を解く。問題数はサーバー側で確定させる（ランキングの公平性のため）
 create or replace function public.sessions_before_insert() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   new.user_id := auth.uid();
   if new.mode = 'exam' then
-    new.question_count := (select count(*) from public.questions where active);
+    if new.scope is null or not exists (select 1 from public.units u where u.key = new.scope) then
+      raise exception '試験の範囲を選んでください';
+    end if;
+    new.question_count := (select count(*) from public.questions q join public.points p on p.code = q.point_code
+                           where q.active and p.unit_key = new.scope);
   end if;
   return new;
 end $$;
@@ -152,7 +173,8 @@ $$;
 -- ---------- 試験モードのランキング ----------
 -- 各自のベスト記録（全問解答済みの試験）で、正答率が高い順 → 同率なら合計時間が短い順
 drop function if exists public.get_exam_ranking();
-create or replace function public.get_exam_ranking()
+drop function if exists public.get_exam_ranking(text);
+create or replace function public.get_exam_ranking(p_scope text)
 returns table(rank bigint, display_name text, correct int, total int, total_ms bigint, median_ms numeric, finished_at timestamptz, is_me boolean)
 language sql stable security definer set search_path = public as $$
   with s as (
@@ -162,7 +184,7 @@ language sql stable security definer set search_path = public as $$
            coalesce(sum(a.time_ms), 0)::bigint as total_ms,
            percentile_cont(0.5) within group (order by a.time_ms) as median_ms
     from public.sessions s join public.attempts a on a.session_id = s.id
-    where s.mode = 'exam' and s.finished_at is not null and s.question_count > 0
+    where s.mode = 'exam' and s.scope = p_scope and s.finished_at is not null and s.question_count > 0
     group by s.id
   ), best as (
     select distinct on (s.user_id) s.* from s
@@ -197,6 +219,14 @@ alter table public.questions enable row level security;
 alter table public.sessions  enable row level security;
 alter table public.attempts  enable row level security;
 alter table public.points    enable row level security;
+alter table public.units     enable row level security;
+
+drop policy if exists "units: ログインしていれば読める" on public.units;
+create policy "units: ログインしていれば読める" on public.units for select
+  using (auth.uid() is not null);
+drop policy if exists "units: 講師が編集" on public.units;
+create policy "units: 講師が編集" on public.units for all
+  using (public.is_teacher()) with check (public.is_teacher());
 
 drop policy if exists "points: ログインしていれば読める" on public.points;
 create policy "points: ログインしていれば読める" on public.points for select
@@ -237,11 +267,11 @@ create policy "attempts: 本人か講師が読める" on public.attempts for sel
 grant execute on function public.get_questions() to authenticated;
 grant execute on function public.get_question_stats() to authenticated;
 grant execute on function public.get_point_stats() to authenticated;
-grant execute on function public.get_exam_ranking() to authenticated;
+grant execute on function public.get_exam_ranking(text) to authenticated;
 grant execute on function public.get_activity_ranking(int) to authenticated;
 revoke execute on function public.get_question_stats() from anon, public;
 revoke execute on function public.get_point_stats() from anon, public;
-revoke execute on function public.get_exam_ranking() from anon, public;
+revoke execute on function public.get_exam_ranking(text) from anon, public;
 revoke execute on function public.get_activity_ranking(int) from anon, public;
 grant execute on function public.submit_answer(uuid, text, boolean, int) to authenticated;
 revoke execute on function public.submit_answer(uuid, text, boolean, int) from anon, public;
