@@ -75,7 +75,11 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--in
 .qmeta .l{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .qno{font-family:var(--f-mono);font-weight:600;color:var(--ink)}
 .chip{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700}
-.timer{font-family:var(--f-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.timer{font-family:var(--f-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);transition:color .2s}
+.timer.over{color:var(--warn)}
+.tbox{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex:none}
+.tref{font-size:12px;color:var(--ink-2);white-space:nowrap}
+.tref b{font-family:var(--f-mono);color:var(--ink);font-weight:600}
 .progress{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--accent);transition:width .3s}
 .stem{font-size:18px;line-height:1.85;font-weight:500}
@@ -393,13 +397,15 @@ async function startQuiz(mode,point){
   const pool=S.questions.filter(q=>mode==="exam"||!point||q.point_code===point);
   const {data,error}=await S.sb.from("sessions").insert({user_id:S.session.user.id,mode,question_count:pool.length}).select("id").single();
   if(error){S.error="開始できませんでした："+error.message;render();return}
+  await loadStats().catch(()=>{});
   S.quiz={sid:data.id,mode,order:shuffle(pool.map(q=>q.id)),i:0,answers:[],answered:false,done:false,paused:0,hiddenAt:null,t0:0,inflight:[]};
   S.lastResult=null;S.error="";showQuestion();window.scrollTo(0,0);
 }
 function showQuestion(){
   const q=S.quiz;q.answered=false;q.paused=0;q.hiddenAt=null;q.choice=null;
   renderQuiz();q.t0=performance.now();clearInterval(tick);
-  tick=setInterval(()=>{const el=$("#tm");if(el&&!q.answered)el.textContent=fmtT(elapsed())},100);
+  const med=S.qstats[q.order[q.i]]?.med; // みんなの中央値を超えたらタイマーの色を変える
+  tick=setInterval(()=>{const el=$("#tm");if(el&&!q.answered){const t=elapsed();el.textContent=fmtT(t);el.classList.toggle("over",med!=null&&t>med)}},100);
 }
 function elapsed(){const q=S.quiz;let p=q.paused;if(q.hiddenAt)p+=performance.now()-q.hiddenAt;return Math.max(0,performance.now()-q.t0-p)}
 const fmtT=ms=>{const s=ms/1000;return s<60?s.toFixed(1):Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0")};
@@ -408,7 +414,8 @@ function renderQuiz(){
   const st=S.qstats[item.id];
   app.innerHTML=`<section class="sheet">
     <div class="qmeta"><span class="l"><span class="pill ${exam?"e":"p"}">${exam?"試験":"練習"}</span><span class="qno">${q.i+1} / ${q.order.length}</span></span>
-      <span class="timer" id="tm" aria-label="経過時間">${q.answered?fmtT(q.lastMs):"0.0"}</span></div>
+      <span class="tbox"><span class="timer${q.answered&&st?.med!=null&&q.lastMs>st.med?" over":""}" id="tm" aria-label="経過時間">${q.answered?fmtT(q.lastMs):"0.0"}</span>
+        <span class="tref" id="tref">みんなの中央値 <b>${st?.med!=null?sec(st.med):"データなし"}</b></span></span></div>
     <div><span class="chip">${esc(plabel(item.point_code))}</span></div>
     <div class="progress"><i style="width:${(q.i/q.order.length)*100}%"></i></div>
     <p class="stem">${esc(item.stem)}</p>
