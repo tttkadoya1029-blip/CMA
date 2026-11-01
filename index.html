@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CMA正誤トレーナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#f3f5f4; --sheet:#ffffff; --ink:#18242b; --ink-2:#4d5d66; --rule:#d5dddc;
+  --accent:#1f6f6a; --accent-ink:#ffffff; --accent-soft:#e1efed;
+  --maru:#1d5fbf; --maru-soft:#e4edfa; --batsu:#c2362f; --batsu-soft:#fbe7e5;
+  --warn:#a86a00; --warn-soft:#fbf0d9;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --paper:#11181b; --sheet:#182226; --ink:#e4ecec; --ink-2:#9aaab0; --rule:#2b3a3f;
+  --accent:#4fb3a9; --accent-ink:#0c1a1a; --accent-soft:#1c3633;
+  --maru:#7aa9f0; --maru-soft:#1b2a40; --batsu:#f07a72; --batsu-soft:#3a1f1d;
+  --warn:#e2b04a; --warn-soft:#3a2f17; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7}
+.wrap{max-width:860px;margin:0 auto;padding-block:20px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+header.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:10px}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand b{font-size:20px;font-weight:900;letter-spacing:.02em}
+.brand span{font-size:12px;color:var(--ink-2);letter-spacing:.08em}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2)}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:0;text-decoration:underline}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{border:1px solid var(--rule);background:var(--sheet);color:var(--ink);padding:6px 14px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:24px;display:flex;flex-direction:column;gap:16px;min-width:0}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.35}
+h1{font-size:24px;font-weight:900} h2{font-size:18px;font-weight:700}
+h3{font-size:14px;font-weight:700;color:var(--ink-2);letter-spacing:.06em}
+p{margin:0}
+.muted{color:var(--ink-2);font-size:13px}
+.btn{font:inherit;font-weight:700;border-radius:6px;padding:10px 20px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.google{background:var(--sheet);color:var(--ink);border-color:var(--rule);display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,.tab:focus-visible,.mark:focus-visible,input:focus-visible,tr:focus-visible,.linkbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=email],input[type=password]{font:inherit;padding:10px 12px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);min-width:0;flex:1 1 220px;width:100%}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)}
+label.f input{flex:none}
+.auth{max-width:420px;width:100%;margin:0 auto}
+.divider{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:12px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px}
+.note.info{border-color:var(--accent);background:var(--accent-soft)}
+.qmeta{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.qno{font-family:var(--f-mono);font-weight:600;color:var(--ink)}
+.chip{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.timer{font-family:var(--f-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.progress{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.stem{font-size:18px;line-height:1.85;font-weight:500;padding-block:8px}
+.marks{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mark{font:inherit;border:2px solid var(--rule);background:var(--sheet);border-radius:8px;padding:18px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink)}
+.mark .sym{font-size:44px;line-height:1;font-weight:900}
+.mark .lb{font-size:13px;color:var(--ink-2)}
+.mark.m:hover:not(:disabled){border-color:var(--maru);background:var(--maru-soft)}
+.mark.b:hover:not(:disabled){border-color:var(--batsu);background:var(--batsu-soft)}
+.mark.m .sym{color:var(--maru)} .mark.b .sym{color:var(--batsu)}
+.mark.chosen{border-color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.mark:disabled{cursor:default}
+.verdict{border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.verdict.ok{background:var(--maru-soft)} .verdict.ng{background:var(--batsu-soft)}
+.verdict b{font-size:16px} .verdict.ok b{color:var(--maru)} .verdict.ng b{color:var(--batsu)}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:left;white-space:nowrap}
+th{font-size:12px;color:var(--ink-2);font-weight:700;background:var(--paper)}
+td.num,th.num{text-align:right;font-family:var(--f-mono)}
+tbody tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--accent-soft)}
+td.long{white-space:normal;min-width:240px}
+.bar-cell{display:flex;align-items:center;gap:8px}
+.minibar{flex:0 0 80px;height:6px;background:var(--rule);border-radius:3px;overflow:hidden}
+.minibar i{display:block;height:100%;background:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{border:1px solid var(--rule);border-radius:6px;padding:12px 14px}
+.stat .k{font-size:12px;color:var(--ink-2)}
+.stat .v{font-family:var(--f-mono);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;color:var(--ink-2);font-weight:400}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px}
+.tag.red{background:var(--batsu-soft);color:var(--batsu)} .tag.amber{background:var(--warn-soft);color:var(--warn)}
+.tag.blue{background:var(--maru-soft);color:var(--maru)} .tag.green{background:var(--accent-soft);color:var(--accent)}
+.res-list{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:6px}
+.res-item{display:grid;grid-template-columns:32px 1fr auto;gap:12px;padding:10px 14px;border-bottom:1px solid var(--rule);align-items:start}
+.res-item:last-child{border-bottom:0}
+.res-item .s{font-size:20px;font-weight:900;line-height:1.3}
+.res-item .s.ok{color:var(--maru)} .res-item .s.ng{color:var(--batsu)}
+.res-item .t{font-family:var(--f-mono);font-size:13px;color:var(--ink-2)}
+.res-item p{min-width:0;font-size:13px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.empty{text-align:center;padding:28px 12px;color:var(--ink-2)}
+.switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer}
+@media (max-width:480px){.sheet{padding:18px}.stem{font-size:16px}.mark .sym{font-size:38px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="brand"><b>CMA正誤トレーナー</b><span>証券アナリスト第1次 科目Ⅰ</span></div>
+    <div class="who" id="who"></div>
+  </header>
+  <nav class="tabs" id="tabs" hidden>
+    <button class="tab" data-view="home" aria-pressed="true">解く</button>
+    <button class="tab" data-view="teacher" aria-pressed="false">講師用 分析</button>
+  </nav>
+  <main id="app"><section class="sheet"><h2>読み込んでいます…</h2></section></main>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const CFG=window.APP_CONFIG||{};
+const OUTLIER_MS=300000; // 5分超は離席とみなし時間分析から除外
+const SLOW_MS=45000;     // 受講者本人の画面での「時間がかかった」目安
+const S={sb:null,session:null,profile:null,questions:[],QMAP:{},TOPICS:[],myAttempts:[],view:"home",quiz:null,lastResult:null,
+  sample:false,student:null,error:"",teacherData:null,teacherLoading:false,authMode:"login",authMsg:""};
+const $=s=>document.querySelector(s), app=$("#app");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sec=ms=>ms==null?"—":(ms/1000).toFixed(1)+"秒";
+const pct=x=>x==null||isNaN(x)?"—":Math.round(x*100)+"%";
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const median=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2};
+const sd=a=>{const m=mean(a);if(a.length<2)return 0;return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/a.length)};
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmtDate=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
+const isTeacher=()=>S.profile?.role==="teacher";
+
+/* ===== 起動 ===== */
+(async function boot(){
+  if(!CFG.SUPABASE_URL||CFG.SUPABASE_URL.includes("xxxx")||!window.supabase){
+    app.innerHTML=`<section class="sheet"><h2>初期設定がまだです</h2><p>config.js に Supabase の URL と anon key を貼り付けてから、もう一度開いてください。手順は README.md にあります。</p></section>`;return;
+  }
+  S.sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
+  const {data}=await S.sb.auth.getSession();
+  await onAuth(data.session);
+  S.sb.auth.onAuthStateChange((_e,session)=>{ if((session?.user?.id)!==(S.session?.user?.id)) onAuth(session) });
+})();
+
+async function onAuth(session){
+  S.session=session;S.profile=null;S.teacherData=null;S.quiz=null;S.lastResult=null;S.view="home";
+  if(!session){renderWho();renderAuth();return}
+  app.innerHTML=`<section class="sheet"><h2>読み込んでいます…</h2></section>`;
+  const uid=session.user.id;
+  const [p,q]=await Promise.all([
+    S.sb.from("profiles").select("*").eq("id",uid).maybeSingle(),
+    S.sb.rpc("get_questions")
+  ]);
+  if(p.error||q.error){app.innerHTML=`<section class="sheet"><h2>データを読み込めませんでした</h2><p class="muted">${esc((p.error||q.error).message)}</p></section>`;return}
+  S.profile=p.data||{id:uid,email:session.user.email,display_name:"",role:"student"};
+  setQuestions(q.data);
+  await loadMine();
+  $("#tabs").hidden=!isTeacher();
+  setTab("home");
+  render();
+}
+function setQuestions(list){
+  S.questions=list;S.QMAP=Object.fromEntries(list.map(x=>[x.id,x]));S.TOPICS=[...new Set(list.map(x=>x.topic))];
+}
+async function loadMine(){
+  const rows=await fetchAll(()=>S.sb.from("attempts").select("session_id,question_id,choice,is_correct,time_ms,answered_at").eq("user_id",S.session.user.id).order("answered_at"));
+  S.myAttempts=rows.map(toAns);
+}
+const toAns=r=>({sid:r.session_id,qid:r.question_id,choice:r.choice,correct:r.is_correct,ms:r.time_ms,at:new Date(r.answered_at).getTime(),uid:r.user_id});
+async function fetchAll(build){ // 1回1000件の上限を超えても全件取得する
+  const out=[];const step=1000;
+  for(let from=0;;from+=step){
+    const {data,error}=await build().range(from,from+step-1);
+    if(error)throw error;
+    out.push(...data);if(data.length<step)break;
+  }
+  return out;
+}
+
+/* ===== ログイン画面 ===== */
+function renderAuth(){
+  const signup=S.authMode==="signup";
+  app.innerHTML=`<section class="sheet auth">
+    <h1>${signup?"新規登録":"ログイン"}</h1>
+    <p class="muted">解答時間と正誤をあなたのアカウントに記録し、苦手な論点を分析します。</p>
+    ${S.authMsg?`<div class="note ${S.authMsg.startsWith("✓")?"info":""}">${esc(S.authMsg.replace(/^✓/,""))}</div>`:""}
+    ${CFG.ENABLE_GOOGLE!==false?`<button class="btn google" id="g"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Googleアカウントで続ける</button>
+    <div class="divider">またはメールアドレスで</div>`:""}
+    <form id="ef" style="display:flex;flex-direction:column;gap:12px">
+      ${signup?`<label class="f">お名前（講師の画面に表示）<input type="text" id="nm" maxlength="30" required autocomplete="name"></label>`:""}
+      <label class="f">メールアドレス<input type="email" id="em" required autocomplete="email"></label>
+      <label class="f">パスワード（6文字以上）<input type="password" id="pw" minlength="6" required autocomplete="${signup?"new-password":"current-password"}"></label>
+      <button class="btn accent" type="submit" id="esub">${signup?"登録する":"ログイン"}</button>
+    </form>
+    <p class="muted">${signup?`登録済みの方は <button class="linkbtn" id="sw">ログイン</button>`:`はじめての方は <button class="linkbtn" id="sw">新規登録</button>`}</p>
+  </section>`;
+  $("#sw").addEventListener("click",()=>{S.authMode=signup?"login":"signup";S.authMsg="";renderAuth()});
+  $("#g")?.addEventListener("click",async()=>{
+    const {error}=await S.sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}});
+    if(error){S.authMsg="Googleログインを開始できませんでした："+error.message;renderAuth()}
+  });
+  $("#ef").addEventListener("submit",async e=>{
+    e.preventDefault();const btn=$("#esub");btn.disabled=true;
+    const email=$("#em").value.trim(),password=$("#pw").value;
+    let res;
+    if(signup) res=await S.sb.auth.signUp({email,password,options:{data:{display_name:$("#nm").value.trim()},emailRedirectTo:location.origin+location.pathname}});
+    else res=await S.sb.auth.signInWithPassword({email,password});
+    btn.disabled=false;
+    if(res.error){S.authMsg=authErr(res.error);renderAuth();return}
+    if(signup&&!res.data.session){S.authMsg="✓確認メールを送りました。メール内のリンクを押すと登録が完了します。";S.authMode="login";renderAuth()}
+  });
+}
+function authErr(e){
+  const m=e.message||"";
+  if(/Invalid login credentials/i.test(m))return "メールアドレスかパスワードが違います。";
+  if(/already registered/i.test(m))return "このメールアドレスは登録済みです。ログインしてください。";
+  if(/Email not confirmed/i.test(m))return "メールアドレスの確認がまだです。届いたメールのリンクを押してください。";
+  if(/rate limit/i.test(m))return "短時間に操作が集中しました。しばらく待ってからお試しください。";
+  return "ログインできませんでした："+m;
+}
+function renderWho(){
+  const w=$("#who");w.innerHTML="";if(!S.session)return;
+  const sp=document.createElement("span");
+  sp.textContent=(S.profile?.display_name||S.session.user.email)+(isTeacher()?"（講師）":"");
+  const b=document.createElement("button");b.className="linkbtn";b.textContent="ログアウト";
+  b.addEventListener("click",()=>S.sb.auth.signOut());
+  w.append(sp,b);
+}
+
+/* ===== 画面の切り替え ===== */
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+  if(S.quiz&&!S.quiz.done)return;
+  setTab(b.dataset.view);S.student=null;render();
+  if(S.view==="teacher"&&!S.teacherData)loadTeacher();
+}));
+function setTab(v){S.view=v;document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",t.dataset.view===v?"true":"false"))}
+document.addEventListener("visibilitychange",()=>{
+  const q=S.quiz;if(!q||q.answered)return;
+  if(document.hidden){q.hiddenAt=performance.now()}
+  else if(q.hiddenAt){q.paused+=performance.now()-q.hiddenAt;q.hiddenAt=null}
+});
+function render(){
+  renderWho();
+  if(!S.session){renderAuth();return}
+  if(S.view==="teacher"&&isTeacher()){renderTeacher();return}
+  if(S.quiz&&!S.quiz.done){renderQuiz();return}
+  if(!S.profile?.display_name){renderOnboard();return}
+  if(S.lastResult){renderResult();return}
+  renderHome();
+}
+
+/* ===== 初回：名前登録（Googleログインで名前が取れなかった場合など） ===== */
+function renderOnboard(){
+  app.innerHTML=`<section class="sheet">
+    <h1>お名前を登録してください</h1><p>講師の分析画面に表示される名前です。</p>
+    ${S.error?`<div class="note">${esc(S.error)}</div>`:""}
+    <form class="row" id="nf"><input type="text" id="nick" maxlength="30" placeholder="例：山田 太郎" required>
+    <button class="btn accent" type="submit">登録してはじめる</button></form></section>`;
+  $("#nf").addEventListener("submit",async e=>{
+    e.preventDefault();const nick=$("#nick").value.trim();if(!nick)return;
+    const {error}=await S.sb.from("profiles").update({display_name:nick}).eq("id",S.session.user.id);
+    if(error){S.error="名前を保存できませんでした："+error.message;render();return}
+    S.profile.display_name=nick;S.error="";render();
+  });
+}
+
+/* ===== 受講者：ホーム ===== */
+function diagnose(ac,tm,slow){
+  if(ac==null)return null;const isSlow=tm!=null&&tm>slow;
+  if(ac<0.6&&isSlow)return {c:"red",l:"理解不足",h:"時間をかけても正解できない。基礎概念から復習"};
+  if(ac<0.6)return {c:"amber",l:"早とちり",h:"速いが誤答が多い。問題文の読み方・ひっかけの型を指導"};
+  if(isSlow)return {c:"blue",l:"定着不足",h:"正解できるが遅い。反復演習でスピードを上げる"};
+  return {c:"green",l:"安定",h:"正確で速い。応用問題へ"};
+}
+const tagHtml=d=>d?`<span class="tag ${d.c}" title="${esc(d.h)}">${d.l}</span>`:"—";
+const accBar=x=>`<div class="bar-cell"><span class="minibar"><i style="width:${Math.round((x||0)*100)}%"></i></span><span style="font-family:var(--f-mono)">${pct(x)}</span></div>`;
+function renderHome(){
+  const ans=S.myAttempts;
+  const bySid={};ans.forEach(a=>{(bySid[a.sid]=bySid[a.sid]||[]).push(a)});
+  const sessions=Object.values(bySid).sort((a,b)=>b[0].at-a[0].at);
+  const acc=ans.length?ans.filter(a=>a.correct).length/ans.length:null;
+  const times=ans.filter(a=>a.ms<=OUTLIER_MS).map(a=>a.ms);
+  const rows=S.TOPICS.map(t=>{const a=ans.filter(x=>S.QMAP[x.qid]?.topic===t);if(!a.length)return null;
+    const ac=a.filter(x=>x.correct).length/a.length,tm=mean(a.filter(x=>x.ms<=OUTLIER_MS).map(x=>x.ms));
+    return {t,n:a.length,ac,tm,d:diagnose(ac,tm,SLOW_MS)}}).filter(Boolean);
+  app.innerHTML=`<section class="sheet">
+    <div class="row" style="justify-content:space-between">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><h1>正誤問題 ${S.questions.length}問</h1>
+      <p class="muted">問題が表示されてから ○ か × を押すまでの時間を計測します。別のタブに切り替えている間は計測を止めます。</p></div>
+      <button class="btn accent" id="start" ${S.questions.length?"":"disabled"}>開始する</button>
+    </div>
+    ${S.error?`<div class="note">${esc(S.error)}</div>`:""}
+    ${S.questions.length?`<div class="row" style="gap:6px">${S.TOPICS.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>`:`<div class="note">問題がまだ登録されていません。講師に連絡してください。</div>`}
+  </section>
+  <section class="sheet"><h2>あなたの記録</h2>
+    ${ans.length?`<div class="stats">
+      <div class="stat"><div class="k">解答数</div><div class="v">${ans.length}<small> 問</small></div></div>
+      <div class="stat"><div class="k">正答率</div><div class="v">${pct(acc)}</div></div>
+      <div class="stat"><div class="k">平均解答時間</div><div class="v">${times.length?(mean(times)/1000).toFixed(1):"—"}<small> 秒</small></div></div>
+      <div class="stat"><div class="k">受験回数</div><div class="v">${sessions.length}<small> 回</small></div></div></div>
+    <h3>論点ごとの傾向</h3>
+    <div class="tbl"><table><thead><tr><th>論点</th><th class="num">解答数</th><th>正答率</th><th class="num">平均時間</th><th>傾向</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.t)}</td><td class="num">${r.n}</td><td>${accBar(r.ac)}</td><td class="num">${sec(r.tm)}</td><td>${tagHtml(r.d)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted">「時間がかかる」の目安は1問${SLOW_MS/1000}秒です。講師の画面では受講者全体の平均と比べて判定します。</p>
+    <h3>受験履歴</h3>
+    <div class="tbl"><table><thead><tr><th>日時</th><th class="num">得点</th><th class="num">合計時間</th></tr></thead><tbody>
+    ${sessions.slice(0,10).map(a=>`<tr><td>${fmtDate(a[0].at)}</td><td class="num">${a.filter(x=>x.correct).length} / ${a.length}</td><td class="num">${sec(a.reduce((x,y)=>x+y.ms,0))}</td></tr>`).join("")}
+    </tbody></table></div>`
+    :`<div class="empty">まだ記録がありません。「開始する」を押すと、結果がここに表示されます。</div>`}
+  </section>`;
+  $("#start").addEventListener("click",startQuiz);
+}
+
+/* ===== 出題 ===== */
+let tick=null;
+async function startQuiz(){
+  const btn=$("#start");if(btn)btn.disabled=true;
+  const {data,error}=await S.sb.from("sessions").insert({user_id:S.session.user.id}).select("id").single();
+  if(error){S.error="受験を開始できませんでした："+error.message;render();return}
+  S.quiz={sid:data.id,order:shuffle(S.questions.map(q=>q.id)),i:0,answers:[],answered:false,done:false,paused:0,hiddenAt:null,t0:0,pending:false};
+  S.lastResult=null;S.error="";showQuestion();
+}
+function showQuestion(){
+  const q=S.quiz;q.answered=false;q.paused=0;q.hiddenAt=null;q.choice=null;
+  renderQuiz();q.t0=performance.now();clearInterval(tick);
+  tick=setInterval(()=>{const el=$("#tm");if(el&&!q.answered)el.textContent=fmtT(elapsed())},100);
+}
+function elapsed(){const q=S.quiz;let p=q.paused;if(q.hiddenAt)p+=performance.now()-q.hiddenAt;return Math.max(0,performance.now()-q.t0-p)}
+const fmtT=ms=>{const s=ms/1000;return s<60?s.toFixed(1):Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0")};
+function renderQuiz(){
+  const q=S.quiz,item=S.QMAP[q.order[q.i]],last=q.answers[q.i];
+  app.innerHTML=`<section class="sheet">
+    <div class="qmeta"><span><span class="qno">第${q.i+1}問 / ${q.order.length}</span>　<span class="chip">${esc(item.topic)}</span>　${esc(item.level)}</span>
+      <span class="timer" id="tm" aria-label="経過時間">${q.answered?fmtT(q.lastMs):"0.0"}</span></div>
+    <div class="progress"><i style="width:${(q.i/q.order.length)*100}%"></i></div>
+    <p class="stem">${esc(item.stem)}</p>
+    <div class="marks">
+      <button class="mark m ${q.choice===true?"chosen":""}" id="ans-true" ${q.answered?"disabled":""}><span class="sym">○</span><span class="lb">正しい</span></button>
+      <button class="mark b ${q.choice===false?"chosen":""}" id="ans-false" ${q.answered?"disabled":""}><span class="sym">×</span><span class="lb">誤り</span></button>
+    </div>
+    ${q.answered?(last?`<div class="verdict ${last.correct?"ok":"ng"}"><b>${last.correct?"正解":"不正解"}（正答：${last.answer?"○":"×"}）</b><p>${esc(last.exp)}</p></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="next">${q.i+1<q.order.length?"次の問題へ":"結果を見る"}</button></div>`
+      :(S.error?`<div class="note">${esc(S.error)}</div><div class="row" style="justify-content:flex-end"><button class="btn" id="retry">もう一度送信</button></div>`:`<p class="muted">採点しています…</p>`))
+    :`<p class="muted">根拠を持って選んでください。</p>`}
+  </section>`;
+  if(!q.answered){$("#ans-true").addEventListener("click",()=>answer(true));$("#ans-false").addEventListener("click",()=>answer(false))}
+  else if(last){$("#next").addEventListener("click",next);$("#next").focus()}
+  else $("#retry")?.addEventListener("click",()=>send());
+}
+function answer(v){
+  const q=S.quiz;if(q.answered)return;
+  q.lastMs=Math.round(elapsed());q.answered=true;q.choice=v;clearInterval(tick);
+  send();
+}
+async function send(){
+  const q=S.quiz,qid=q.order[q.i];S.error="";renderQuiz();
+  const {data,error}=await S.sb.rpc("submit_answer",{p_session:q.sid,p_question:qid,p_choice:q.choice,p_time_ms:q.lastMs});
+  if(error||!data?.length){S.error="解答を保存できませんでした。通信状況を確認してください。"+(error?"（"+error.message+"）":"");renderQuiz();return}
+  const r=data[0];
+  q.answers[q.i]={qid,choice:q.choice,correct:r.is_correct,answer:r.answer,exp:r.explanation,ms:q.lastMs};
+  renderQuiz();
+}
+async function next(){
+  const q=S.quiz;
+  if(q.i+1<q.order.length){q.i++;showQuestion();return}
+  q.done=true;S.lastResult={answers:q.answers};S.quiz=null;
+  await S.sb.from("sessions").update({finished_at:new Date().toISOString()}).eq("id",q.sid);
+  await loadMine();S.teacherData=null;render();
+}
+function renderResult(){
+  const a=S.lastResult.answers,score=a.filter(x=>x.correct).length,total=a.reduce((x,y)=>x+y.ms,0);
+  app.innerHTML=`<section class="sheet">
+    <h1>結果　${score} / ${a.length} 問正解</h1>
+    <div class="stats">
+      <div class="stat"><div class="k">正答率</div><div class="v">${pct(score/a.length)}</div></div>
+      <div class="stat"><div class="k">合計時間</div><div class="v">${(total/1000).toFixed(1)}<small> 秒</small></div></div>
+      <div class="stat"><div class="k">1問あたり</div><div class="v">${(total/a.length/1000).toFixed(1)}<small> 秒</small></div></div></div>
+    <div class="note info">記録を保存しました。</div>
+    <div class="res-list">${a.map((x,i)=>{const q=S.QMAP[x.qid];return `<div class="res-item"><span class="s ${x.correct?"ok":"ng"}">${x.correct?"○":"×"}</span>
+      <p><b>第${i+1}問</b>　${esc(q.stem)}<br><span class="muted">正答 ${x.answer?"○":"×"}／あなたの解答 ${x.choice?"○":"×"}　${esc(x.exp)}</span></p><span class="t">${sec(x.ms)}</span></div>`}).join("")}</div>
+    <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="home">記録を見る</button><button class="btn accent" id="again">もう一度解く</button></div>
+  </section>`;
+  $("#home").addEventListener("click",()=>{S.lastResult=null;render()});
+  $("#again").addEventListener("click",startQuiz);
+}
+
+/* ===== 講師：分析 ===== */
+async function loadTeacher(){
+  if(S.teacherLoading)return;S.teacherLoading=true;
+  try{
+    const [profiles,attempts,qs]=await Promise.all([
+      fetchAll(()=>S.sb.from("profiles").select("id,display_name,email,role").order("created_at")),
+      fetchAll(()=>S.sb.from("attempts").select("user_id,session_id,question_id,choice,is_correct,time_ms,answered_at").order("id")),
+      S.sb.from("questions").select("*").order("sort")
+    ]);
+    S.teacherData={profiles,attempts:attempts.map(toAns),questions:qs.data||[]};S.error="";
+  }catch(e){S.error="分析データを読み込めませんでした："+e.message}
+  S.teacherLoading=false;if(S.view==="teacher")render();
+}
+function sampleStudents(){ // 画面確認用の架空データ。保存はしない
+  const names=["サンプルA","サンプルB","サンプルC","サンプルD","サンプルE","サンプルF"],skill=[.9,.75,.6,.5,.8,.4],speed=[18,30,25,40,55,15];
+  let seed=7;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+  return names.map((n,k)=>{const ans=[];for(let s=0;s<2;s++)S.questions.forEach((q,j)=>{const p=Math.min(.98,skill[k]*(1-j*.05)+.15);
+    ans.push({sid:"x"+s,qid:q.id,correct:rnd()<p,ms:Math.round((speed[k]+rnd()*20)*(q.level==="応用"?1.6:1)*1000)})});
+    return {uid:"sample"+k,name:n,ans}});
+}
+function teacherModel(students){
+  students=students.filter(s=>s.ans.length);
+  const T=S.TOPICS,all=students.flatMap(s=>s.ans.map(a=>({...a,uid:s.uid}))),okT=a=>a.ms<=OUTLIER_MS;
+  const topicAvgT={};T.forEach(t=>{topicAvgT[t]=mean(all.filter(a=>S.QMAP[a.qid]?.topic===t&&okT(a)).map(a=>a.ms))});
+  students.forEach(s=>{
+    s.sessions=new Set(s.ans.map(a=>a.sid)).size;
+    s.acc=s.ans.filter(a=>a.correct).length/s.ans.length;s.t=mean(s.ans.filter(okT).map(a=>a.ms));
+    s.topics=T.map(t=>{const a=s.ans.filter(x=>S.QMAP[x.qid]?.topic===t);if(!a.length)return {t,n:0};
+      const ac=a.filter(x=>x.correct).length/a.length,tm=mean(a.filter(okT).map(x=>x.ms));
+      return {t,n:a.length,ac,tm,d:diagnose(ac,tm,(topicAvgT[t]||SLOW_MS)*1.2)}});
+  });
+  const accs=students.map(s=>s.acc),m=mean(accs),d=sd(accs);
+  students.forEach(s=>{s.dev=d>0?50+10*(s.acc-m)/d:50;const w=s.topics.filter(x=>x.n).sort((a,b)=>a.ac-b.ac||((b.tm||0)-(a.tm||0)))[0];s.weak=w&&w.ac<1?w:null});
+  students.sort((a,b)=>b.dev-a.dev);
+  const topics=T.map(t=>{const a=all.filter(x=>S.QMAP[x.qid]?.topic===t);return {t,n:a.length,ac:a.length?a.filter(x=>x.correct).length/a.length:null,tm:topicAvgT[t]}});
+  const questions=S.questions.map(q=>{const a=all.filter(x=>x.qid===q.id);return {q,n:a.length,ac:a.length?a.filter(x=>x.correct).length/a.length:null,tm:median(a.filter(okT).map(x=>x.ms)),out:a.filter(x=>!okT(x)).length}});
+  return {students,topics,questions,all,classAcc:m};
+}
+function renderTeacher(){
+  if(!S.teacherData&&!S.sample){
+    app.innerHTML=`<section class="sheet"><h1>講師用 分析</h1>${S.error?`<div class="note">${esc(S.error)}</div><div class="row"><button class="btn" id="rl">再読み込み</button></div>`:`<p class="muted">集計しています…</p>`}</section>`;
+    $("#rl")?.addEventListener("click",loadTeacher);if(!S.error)loadTeacher();return;
+  }
+  const TD=S.teacherData;
+  let students;
+  if(S.sample)students=sampleStudents();
+  else{const by={};TD.attempts.forEach(a=>{(by[a.uid]=by[a.uid]||[]).push(a)});
+    students=TD.profiles.map(p=>({uid:p.id,name:p.display_name||p.email||"名前未登録",ans:by[p.id]||[]}));}
+  const M=teacherModel(students),answerOf=id=>TD?.questions.find(x=>x.id===id)?.answer;
+  if(S.student){const st=M.students.find(s=>s.uid===S.student);if(st){renderStudent(st,M);return}S.student=null}
+  const has=M.students.length>0,members=TD?TD.profiles.length:0;
+  app.innerHTML=`<section class="sheet">
+    <div class="row" style="justify-content:space-between"><h1>講師用 分析</h1>
+      <div class="row"><label class="switch"><input type="checkbox" id="smp" ${S.sample?"checked":""}> サンプルデータで表示</label><button class="btn ghost" id="rl">最新にする</button></div></div>
+    ${S.sample?`<div class="note">サンプル表示中です。架空の6名分のデータで、実際の記録ではありません。</div>`:`<p class="muted">登録者 ${members} 名</p>`}
+    ${has?`<div class="stats">
+      <div class="stat"><div class="k">受講者（解答あり）</div><div class="v">${M.students.length}<small> 名</small></div></div>
+      <div class="stat"><div class="k">総解答数</div><div class="v">${M.all.length}</div></div>
+      <div class="stat"><div class="k">全体正答率</div><div class="v">${pct(M.all.filter(a=>a.correct).length/M.all.length)}</div></div>
+      <div class="stat"><div class="k">平均解答時間</div><div class="v">${((mean(M.all.filter(a=>a.ms<=OUTLIER_MS).map(a=>a.ms))||0)/1000).toFixed(1)}<small> 秒</small></div></div></div>`
+    :`<div class="empty">まだ解答の記録がありません。このサイトのURLを受講者に送り、ログインして解いてもらうとここに集計されます。</div>`}
+  </section>
+  ${has?`<section class="sheet"><h2>受講者一覧</h2>
+    <p class="muted">偏差値は受講者全員の正答率から算出（50＋10×（本人−平均）÷標準偏差）。行を押すと個別の分析を表示します。</p>
+    <div class="tbl"><table><thead><tr><th>受講者</th><th class="num">偏差値</th><th>正答率</th><th class="num">平均時間</th><th class="num">解答数</th><th class="num">受験回数</th><th>最も弱い論点</th></tr></thead>
+    <tbody>${M.students.map(s=>`<tr class="click" tabindex="0" data-uid="${esc(s.uid)}"><td>${esc(s.name)}</td><td class="num"><b>${s.dev.toFixed(1)}</b></td><td>${accBar(s.acc)}</td><td class="num">${sec(s.t)}</td><td class="num">${s.ans.length}</td><td class="num">${s.sessions}</td><td>${s.weak?esc(s.weak.t)+" "+tagHtml(s.weak.d):"—"}</td></tr>`).join("")}</tbody></table></div></section>
+  <section class="sheet"><h2>論点 × 受講者</h2>
+    <div class="legend"><span>${tagHtml({c:"red",l:"理解不足",h:""})} 遅く、誤答が多い</span><span>${tagHtml({c:"amber",l:"早とちり",h:""})} 速いが誤答が多い</span><span>${tagHtml({c:"blue",l:"定着不足",h:""})} 正解だが遅い</span><span>${tagHtml({c:"green",l:"安定",h:""})}</span></div>
+    <p class="muted">誤答が多い＝正答率60%未満。遅い＝その論点の全体平均時間の1.2倍超。</p>
+    <div class="tbl"><table><thead><tr><th>受講者</th>${S.TOPICS.map(t=>`<th>${esc(t)}</th>`).join("")}</tr></thead>
+    <tbody>${M.students.map(s=>`<tr><td>${esc(s.name)}</td>${s.topics.map(x=>`<td>${x.n?`${tagHtml(x.d)} <span class="muted">${pct(x.ac)}・${sec(x.tm)}</span>`:"—"}</td>`).join("")}</tr>`).join("")}
+    <tr><td><b>全体</b></td>${M.topics.map(x=>`<td><span class="muted">${pct(x.ac)}・${sec(x.tm)}</span></td>`).join("")}</tr></tbody></table></div></section>
+  <section class="sheet"><h2>問題別</h2>
+    <p class="muted">正答率が低い順。時間は中央値で、5分超の解答（離席とみなす）は除外しています。</p>
+    <div class="tbl"><table><thead><tr><th>問題</th><th>論点</th><th>正答率</th><th class="num">時間(中央値)</th><th class="num">解答数</th></tr></thead>
+    <tbody>${[...M.questions].sort((a,b)=>(a.ac??2)-(b.ac??2)).map(x=>{const ans=answerOf(x.q.id);return `<tr><td class="long"><b>${esc(x.q.id.toUpperCase())}</b>${ans==null?"":`（正答 ${ans?"○":"×"}）`} ${esc(x.q.stem)}</td><td>${esc(x.q.topic)}</td><td>${x.n?accBar(x.ac):"—"}</td><td class="num">${sec(x.tm)}</td><td class="num">${x.n}${x.out?` <span class="muted">(除外${x.out})</span>`:""}</td></tr>`}).join("")}</tbody></table></div></section>`:""}`;
+  $("#smp").addEventListener("change",e=>{S.sample=e.target.checked;render()});
+  $("#rl").addEventListener("click",()=>{S.teacherData=null;S.sample=false;render()});
+  document.querySelectorAll("tr.click").forEach(r=>{const go=()=>{S.student=r.dataset.uid;render();window.scrollTo(0,0)};r.addEventListener("click",go);r.addEventListener("keydown",e=>{if(e.key==="Enter")go()})});
+}
+function renderStudent(s,M){
+  const weakQs=S.questions.map(q=>{const a=s.ans.filter(x=>x.qid===q.id);return {q,n:a.length,miss:a.filter(x=>!x.correct).length,tm:mean(a.filter(x=>x.ms<=OUTLIER_MS).map(x=>x.ms))}}).filter(x=>x.n).sort((a,b)=>b.miss/b.n-a.miss/a.n||(b.tm||0)-(a.tm||0));
+  const rank={red:0,amber:1,blue:2};
+  const plan=s.topics.filter(x=>x.n&&x.d&&x.d.c!=="green").sort((a,b)=>rank[a.d.c]-rank[b.d.c]);
+  app.innerHTML=`<section class="sheet">
+    <div class="row"><button class="btn ghost" id="back">← 一覧へ戻る</button></div>
+    <h1>${esc(s.name)} さんの分析</h1>
+    ${S.sample?`<div class="note">サンプル表示中（架空のデータ）</div>`:""}
+    <div class="stats">
+      <div class="stat"><div class="k">偏差値</div><div class="v">${s.dev.toFixed(1)}</div></div>
+      <div class="stat"><div class="k">正答率</div><div class="v">${pct(s.acc)}<small> 全体 ${pct(M.classAcc)}</small></div></div>
+      <div class="stat"><div class="k">平均解答時間</div><div class="v">${s.t?(s.t/1000).toFixed(1):"—"}<small> 秒</small></div></div>
+      <div class="stat"><div class="k">解答数</div><div class="v">${s.ans.length}<small> 問</small></div></div></div></section>
+  <section class="sheet"><h2>指導の優先順位</h2>
+    ${plan.length?`<div class="res-list">${plan.map((x,i)=>`<div class="res-item"><span class="s" style="font-size:15px;font-family:var(--f-mono)">${i+1}</span><p><b>${esc(x.t)}</b> ${tagHtml(x.d)}<br><span class="muted">${esc(x.d.h)}</span></p><span class="t">${pct(x.ac)}・${sec(x.tm)}</span></div>`).join("")}</div>`
+    :`<p>どの論点も安定しています。応用レベルの問題を増やす段階です。</p>`}</section>
+  <section class="sheet"><h2>論点別（全体平均との比較）</h2>
+    <div class="tbl"><table><thead><tr><th>論点</th><th>本人 正答率</th><th class="num">全体 正答率</th><th class="num">本人 時間</th><th class="num">全体 時間</th><th>判定</th></tr></thead>
+    <tbody>${s.topics.map((x,i)=>`<tr><td>${esc(x.t)}</td><td>${x.n?accBar(x.ac):"—"}</td><td class="num">${pct(M.topics[i].ac)}</td><td class="num">${sec(x.tm)}</td><td class="num">${sec(M.topics[i].tm)}</td><td>${x.n?tagHtml(x.d):"—"}</td></tr>`).join("")}</tbody></table></div></section>
+  <section class="sheet"><h2>問題別の結果</h2>
+    <div class="tbl"><table><thead><tr><th>問題</th><th class="num">誤答 / 解答</th><th class="num">平均時間</th></tr></thead>
+    <tbody>${weakQs.map(x=>`<tr><td class="long"><b>${esc(x.q.id.toUpperCase())}</b> ${esc(x.q.stem)}</td><td class="num">${x.miss} / ${x.n}</td><td class="num">${sec(x.tm)}</td></tr>`).join("")}</tbody></table></div></section>`;
+  $("#back").addEventListener("click",()=>{S.student=null;render()});
+}
+</script>
+</body>
+</html>
