@@ -2,7 +2,7 @@
 // localStorage の stub_role=teacher|student / stub_logged=1 で状態を切り替えます。
 (function(){
 const P={"1002":"株式会社の基本原理と株式の機能","1003":"株式の種類と特徴","1006":"株価指数","1018":"産業の戦略的分析","1024":"利益予想と株式価値評価"};
-const points=Object.entries(P).map(([code,title],i)=>({code,chapter:1,title,description:title+"について理解する。",video_url:code==="1006"?"https://www.youtube.com/watch?v=example":null,sort:i}));
+const points=Object.entries(P).map(([code,title],i)=>({code,chapter:1,title,unit_key:"I-1",description:title+"について理解する。",video_url:code==="1006"?"https://www.youtube.com/watch?v=example":null,sort:i}));
 const Q=[["q01","1002","基礎",true],["q02","1003","基礎",false],["q03","1006","標準",true],["q04","1018","標準",false],["q05","1024","応用",false]]
   .map((x,i)=>({id:x[0],point_code:x[1],level:x[2],stem:"テスト用の問題文です。証券アナリスト試験の正誤問題を想定した、少し長めの文章でスマホでの折り返しを確認します（"+x[0]+"）。",answer:x[3],explanation:"テスト用の解説 "+x[0],sort:i}));
 const role=localStorage.getItem("stub_role")||"student";
