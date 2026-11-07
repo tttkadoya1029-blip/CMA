@@ -58,6 +58,8 @@ p{margin:0}
 /* iOSは16px未満の入力欄でズームするため16px */
 input[type=text],input[type=email],input[type=password],input[type=url],input[type=number],select{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);min-width:0;width:100%}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)}
+label.f small{font-size:12px}
+input:disabled{opacity:.7}
 .auth{max-width:440px;width:100%;margin:0 auto}
 .divider{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:12px}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--rule)}
@@ -267,7 +269,8 @@ function renderAuth(){
     ${CFG.ENABLE_GOOGLE!==false?`<button class="btn google" id="g"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Googleアカウントで続ける</button>
     <div class="divider">またはメールアドレスで</div>`:""}
     <form id="ef" style="display:flex;flex-direction:column;gap:12px">
-      ${signup?`<label class="f">お名前（ランキング・講師の画面に表示）<input type="text" id="nm" maxlength="30" required autocomplete="name"></label>`:""}
+      ${signup?`<label class="f">ニックネーム<small>ランキングに表示されます</small><input type="text" id="nk" maxlength="30" required autocomplete="nickname"></label>
+      <label class="f">お名前<small>講師だけが見られます（ランキングには出ません）</small><input type="text" id="nm" maxlength="60" required autocomplete="name" placeholder="例：山田 太郎"></label>`:""}
       <label class="f">メールアドレス<input type="email" id="em" required autocomplete="email" inputmode="email"></label>
       <label class="f">パスワード（6文字以上）<input type="password" id="pw" minlength="6" required autocomplete="${signup?"new-password":"current-password"}"></label>
       <button class="btn accent" type="submit" id="esub">${signup?"登録する":"ログイン"}</button>
@@ -282,7 +285,7 @@ function renderAuth(){
   $("#ef").addEventListener("submit",async e=>{
     e.preventDefault();const btn=$("#esub");btn.disabled=true;
     const email=$("#em").value.trim(),password=$("#pw").value;
-    const res=signup?await S.sb.auth.signUp({email,password,options:{data:{display_name:$("#nm").value.trim()},emailRedirectTo:location.origin+location.pathname}})
+    const res=signup?await S.sb.auth.signUp({email,password,options:{data:{nickname:$("#nk").value.trim(),full_name:$("#nm").value.trim()},emailRedirectTo:location.origin+location.pathname}})
                     :await S.sb.auth.signInWithPassword({email,password});
     btn.disabled=false;
     if(res.error){S.authMsg=authErr(res.error);renderAuth();return}
@@ -301,9 +304,12 @@ function renderWho(){
   const w=$("#who");w.innerHTML="";if(!S.session)return;
   const sp=document.createElement("span");
   sp.textContent=(S.profile?.display_name||S.session.user.email)+(isTeacher()?"（講師）":"");
+  w.append(sp);
+  if(S.profile?.display_name&&S.profile?.full_name){const e=document.createElement("button");e.className="linkbtn";e.textContent="登録情報";
+    e.addEventListener("click",()=>{if(S.quiz&&!S.quiz.done)return;S.editProfile=true;render()});w.append(e)}
   const b=document.createElement("button");b.className="linkbtn";b.textContent="ログアウト";
   b.addEventListener("click",()=>S.sb.auth.signOut());
-  w.append(sp,b);
+  w.append(b);
 }
 
 /* ===== 画面切り替え ===== */
@@ -321,25 +327,35 @@ function render(){
   renderWho();
   if(!S.session){renderAuth();return}
   if(S.quiz&&!S.quiz.done){renderQuiz();return}
-  if(!S.profile?.display_name){renderOnboard();return}
+  if(!S.profile?.display_name||!S.profile?.full_name||S.editProfile){renderOnboard();return}
   if(S.view==="teacher"&&isTeacher()){renderTeacher();return}
   if(S.view==="ranking"){renderRanking();return}
   if(S.lastResult){renderResult();return}
   renderHome();
 }
 
-/* ===== 名前登録 ===== */
+/* ===== 登録情報（ニックネーム・お名前・メールアドレス） ===== */
 function renderOnboard(){
-  app.innerHTML=`<section class="sheet">
-    <h1>お名前を登録してください</h1><p>ランキングと講師の分析画面に表示される名前です。ニックネームでもかまいません。</p>
+  const P=S.profile,first=!P.display_name||!P.full_name,meta=S.session.user.user_metadata||{};
+  app.innerHTML=`<section class="sheet auth">
+    <h1>${first?"登録情報を入力してください":"登録情報の変更"}</h1>
+    <p class="muted">ランキングにはニックネームだけが表示されます。お名前は講師だけが見られます。</p>
     ${S.error?`<div class="note">${esc(S.error)}</div>`:""}
-    <form id="nf" style="display:flex;flex-direction:column;gap:10px"><input type="text" id="nick" maxlength="30" placeholder="例：山田 太郎" required>
-    <button class="btn accent" type="submit">登録してはじめる</button></form></section>`;
+    <form id="nf" style="display:flex;flex-direction:column;gap:12px">
+      <label class="f">ニックネーム<small>ランキングに表示されます（30文字まで）</small><input type="text" id="nick" maxlength="30" required autocomplete="nickname"></label>
+      <label class="f">お名前<small>講師だけが見られます</small><input type="text" id="fname" maxlength="60" required autocomplete="name" placeholder="例：山田 太郎"></label>
+      <label class="f">メールアドレス<small>ログインに使うアドレスです</small><input type="email" id="mail" disabled></label>
+      <button class="btn accent" type="submit" id="nsub">${first?"登録してはじめる":"保存する"}</button>
+      ${first?"":`<button class="btn ghost" type="button" id="ncancel">変更しないで戻る</button>`}
+    </form></section>`;
+  $("#nick").value=P.display_name||"";$("#fname").value=P.full_name||meta.full_name||meta.name||"";$("#mail").value=P.email||S.session.user.email||"";
+  $("#ncancel")?.addEventListener("click",()=>{S.editProfile=false;S.error="";render()});
   $("#nf").addEventListener("submit",async e=>{
-    e.preventDefault();const nick=$("#nick").value.trim();if(!nick)return;
-    const {error}=await S.sb.from("profiles").update({display_name:nick}).eq("id",S.session.user.id);
-    if(error){S.error="名前を保存できませんでした："+error.message;render();return}
-    S.profile.display_name=nick;S.error="";render();
+    e.preventDefault();const nick=$("#nick").value.trim(),fname=$("#fname").value.trim();if(!nick||!fname)return;
+    $("#nsub").disabled=true;
+    const {error}=await S.sb.from("profiles").update({display_name:nick,full_name:fname}).eq("id",S.session.user.id);
+    if(error){S.error="保存できませんでした："+error.message;render();return}
+    Object.assign(S.profile,{display_name:nick,full_name:fname});S.error="";S.editProfile=false;render();
   });
 }
 
@@ -554,7 +570,7 @@ function renderRanking(){
             :`<div class="kv"><span><b>${r.answers}</b>問</span><span><b>${r.sessions}</b>回</span></div>`}</div>
       <span class="side">${exam?pct(r.correct/r.total):""}</span></div>`).join("")}</div>`
     :`<div class="empty">${exam?"まだ試験モードの記録がありません。最初の1人になりましょう。":"直近30日の記録がありません。"}</div>`}
-    <label class="switch"><input type="checkbox" id="show" ${S.profile.show_in_ranking!==false?"checked":""}> ランキングに自分の名前を表示する</label>
+    <label class="switch"><input type="checkbox" id="show" ${S.profile.show_in_ranking!==false?"checked":""}> ランキングに自分のニックネームを表示する</label>
     <p class="muted">オフにすると、他の人のランキングにあなたは表示されません（自分の順位は見られます）。</p>
   </section>`;
   document.querySelectorAll("[data-rt]").forEach(b=>b.addEventListener("click",()=>{S.rankTab=b.dataset.rt;render()}));
@@ -571,7 +587,7 @@ async function loadTeacher(){
   if(S.teacherLoading)return;S.teacherLoading=true;
   try{
     const [profiles,attempts,qs]=await Promise.all([
-      fetchAll(()=>S.sb.from("profiles").select("id,display_name,email,role").order("created_at")),
+      fetchAll(()=>S.sb.from("profiles").select("id,display_name,full_name,email,role").order("created_at")),
       fetchAll(()=>S.sb.from("attempts").select("user_id,session_id,question_id,choice,is_correct,time_ms,answered_at,sessions(mode)").order("id")),
       S.sb.from("questions").select("*").order("sort")
     ]);
@@ -612,7 +628,7 @@ function renderTeacher(){
   const TD=S.teacherData;let students;
   if(S.sample)students=sampleStudents();
   else{const by={};TD.attempts.forEach(a=>{(by[a.uid]=by[a.uid]||[]).push(a)});
-    students=TD.profiles.map(p=>({uid:p.id,name:p.display_name||p.email||"名前未登録",ans:by[p.id]||[]}));}
+    students=TD.profiles.map(p=>({uid:p.id,name:(p.display_name||"ニックネーム未登録")+(p.full_name?`（${p.full_name}）`:""),email:p.email,ans:by[p.id]||[]}));}
   const M=teacherModel(students),answerOf=id=>TD?.questions.find(x=>x.id===id)?.answer;
   if(S.student){const st=M.students.find(s=>s.uid===S.student);if(st){renderStudent(st,M);return}S.student=null}
   const has=M.students.length>0;
@@ -668,6 +684,7 @@ function renderStudent(s,M){
   app.innerHTML=`<section class="sheet">
     <div class="row"><button class="btn ghost small" id="back">← 一覧へ戻る</button></div>
     <h1>${esc(s.name)} さんの分析</h1>
+    ${s.email?`<p class="muted">${esc(s.email)}</p>`:""}
     ${S.sample?`<div class="note">サンプル表示中（架空のデータ）</div>`:""}
     <div class="stats">
       <div class="stat"><div class="k">偏差値</div><div class="v">${s.dev.toFixed(1)}</div></div>

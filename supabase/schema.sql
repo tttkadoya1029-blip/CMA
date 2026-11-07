@@ -63,6 +63,8 @@ do $$ begin
   alter table public.sessions add constraint sessions_mode_chk check (mode in ('practice','exam'));
 exception when duplicate_object then null; end $$;
 alter table public.profiles  add column if not exists show_in_ranking boolean not null default true;
+-- 本名（講師だけが見る）。display_name はニックネーム（ランキングに表示）
+alter table public.profiles  add column if not exists full_name text;
 
 -- ---------- 科目と回（テキストの冊子単位）。受講者はここから勉強する範囲を選ぶ ----------
 create table if not exists public.units (
@@ -121,9 +123,11 @@ $$;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, display_name)
+  -- ニックネームは本人が入力したものだけ使う（Googleの本名をランキングに出さない）
+  insert into public.profiles (id, email, display_name, full_name)
   values (new.id, new.email,
-          coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'))
+          nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), ''),
+          nullif(trim(coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', '')), ''))
   on conflict (id) do nothing;
   return new;
 end $$;
@@ -290,7 +294,7 @@ create policy "profiles: 本人が名前を変更" on public.profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 -- 役割(role)は本人が変えられないよう、更新できる列を名前だけに限定
 revoke update on public.profiles from anon, authenticated;
-grant update (display_name, show_in_ranking) on public.profiles to authenticated;
+grant update (display_name, full_name, show_in_ranking) on public.profiles to authenticated;
 
 drop policy if exists "questions: 講師が全操作" on public.questions;
 create policy "questions: 講師が全操作" on public.questions for all

@@ -34,10 +34,13 @@ const URL_=`http://localhost:${server.address().port}/`;
         await page.screenshot({path:path.join(OUT,`${vp.name}-${role}-${label}.png`),fullPage:true});
       };
       await page.goto(URL_);await page.evaluate(r=>{localStorage.clear();localStorage.setItem("stub_role",r)},role);await page.reload();
-      if(role==="student")await shot("01-login");
+      if(role==="student"){await shot("01-login");await page.click("#sw");await page.waitForTimeout(150);await shot("01b-signup");await page.click("#sw");}
       await page.evaluate(()=>localStorage.setItem("stub_logged","1"));await page.reload();await page.waitForTimeout(300);
       if(role==="student"){
+        await shot("02a-register");
+        await page.fill("#fname","見本 花子");await page.click("#nsub");await page.waitForTimeout(300);
         await shot("02-home");
+        await page.click(".who .linkbtn");await page.waitForTimeout(200);await shot("02c-profile-edit");await page.click("#ncancel");await page.waitForTimeout(200);
         await page.fill("#cnum","3");await page.press("#cnum","Enter");await page.locator("#cnum").blur();await page.waitForTimeout(150);
         const label=await page.textContent("#startE");if(!label.includes("3問"))problems.push(`[${vp.name}] 問題数の自由指定が反映されません: ${label}`);
         await shot("02b-home-count");

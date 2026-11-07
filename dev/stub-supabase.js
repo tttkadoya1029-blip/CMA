@@ -8,8 +8,8 @@ const Q=[["q01","1002","基礎",true],["q02","1003","基礎",false],["q03","1006
 const role=localStorage.getItem("stub_role")||"student";
 const now=Date.now(),iso=t=>new Date(t).toISOString();
 const db={
-  profiles:[{id:"u1",email:"me@example.com",display_name:"テストユーザー（とても長い名前の人）",role,show_in_ranking:true,created_at:1},
-            {id:"u2",email:"b@example.com",display_name:"受講者B",role:"student",show_in_ranking:true,created_at:2}],
+  profiles:[{id:"u1",email:"me@example.com",display_name:"テストユーザー（とても長い名前の人）",full_name:role==="teacher"?"見本 花子":null,role,show_in_ranking:true,created_at:1},
+            {id:"u2",email:"b@example.com",display_name:"受講者B",full_name:"見本 太郎",role:"student",show_in_ranking:true,created_at:2}],
   attempts:[["q01",true,12000],["q02",false,9000],["q03",false,40000],["q04",true,15000]].map((a,i)=>({id:i+1,user_id:"u2",session_id:"sB",question_id:a[0],choice:true,is_correct:a[1],time_ms:a[2],answered_at:iso(now-86400000),sessions:{mode:"practice"}})),
   sessions:[],questions:Q,points
 };
