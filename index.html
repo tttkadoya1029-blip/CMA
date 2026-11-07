@@ -289,7 +289,7 @@ function renderAuth(){
                     :await S.sb.auth.signInWithPassword({email,password});
     btn.disabled=false;
     if(res.error){S.authMsg=authErr(res.error);renderAuth();return}
-    if(signup&&!res.data.session){S.authMsg="✓確認メールを送りました。メール内のリンクを押すと登録が完了します。";S.authMode="login";renderAuth()}
+    if(signup&&!res.data.session){S.authMsg="✓確認メールを送りました。メール内のリンクを押すと登録が完了します。届かない場合は迷惑メールフォルダを確認し、それでもなければ講師に連絡してください。";S.authMode="login";renderAuth()}
   });
 }
 function authErr(e){
@@ -305,7 +305,7 @@ function renderWho(){
   const sp=document.createElement("span");
   sp.textContent=(S.profile?.display_name||S.session.user.email)+(isTeacher()?"（講師）":"");
   w.append(sp);
-  if(S.profile?.display_name&&S.profile?.full_name){const e=document.createElement("button");e.className="linkbtn";e.textContent="登録情報";
+  if(S.profile&&!needsProfile()){const e=document.createElement("button");e.className="linkbtn";e.textContent="登録情報";
     e.addEventListener("click",()=>{if(S.quiz&&!S.quiz.done)return;S.editProfile=true;render()});w.append(e)}
   const b=document.createElement("button");b.className="linkbtn";b.textContent="ログアウト";
   b.addEventListener("click",()=>S.sb.auth.signOut());
@@ -327,7 +327,7 @@ function render(){
   renderWho();
   if(!S.session){renderAuth();return}
   if(S.quiz&&!S.quiz.done){renderQuiz();return}
-  if(!S.profile?.display_name||!S.profile?.full_name||S.editProfile){renderOnboard();return}
+  if(needsProfile()||S.editProfile){renderOnboard();return}
   if(S.view==="teacher"&&isTeacher()){renderTeacher();return}
   if(S.view==="ranking"){renderRanking();return}
   if(S.lastResult){renderResult();return}
@@ -335,27 +335,32 @@ function render(){
 }
 
 /* ===== 登録情報（ニックネーム・お名前・メールアドレス） ===== */
+// full_name 列がない＝データベース未更新。そのときはニックネームだけで進める
+const hasFullName=()=>!!S.profile&&("full_name" in S.profile);
+const needsProfile=()=>!S.profile?.display_name||(hasFullName()&&!S.profile.full_name);
 function renderOnboard(){
-  const P=S.profile,first=!P.display_name||!P.full_name,meta=S.session.user.user_metadata||{};
+  const P=S.profile,first=needsProfile(),meta=S.session.user.user_metadata||{},withName=hasFullName();
   app.innerHTML=`<section class="sheet auth">
     <h1>${first?"登録情報を入力してください":"登録情報の変更"}</h1>
     <p class="muted">ランキングにはニックネームだけが表示されます。お名前は講師だけが見られます。</p>
     ${S.error?`<div class="note">${esc(S.error)}</div>`:""}
     <form id="nf" style="display:flex;flex-direction:column;gap:12px">
       <label class="f">ニックネーム<small>ランキングに表示されます（30文字まで）</small><input type="text" id="nick" maxlength="30" required autocomplete="nickname"></label>
-      <label class="f">お名前<small>講師だけが見られます</small><input type="text" id="fname" maxlength="60" required autocomplete="name" placeholder="例：山田 太郎"></label>
+      ${withName?`<label class="f">お名前<small>講師だけが見られます</small><input type="text" id="fname" maxlength="60" required autocomplete="name" placeholder="例：山田 太郎"></label>`:""}
       <label class="f">メールアドレス<small>ログインに使うアドレスです</small><input type="email" id="mail" disabled></label>
       <button class="btn accent" type="submit" id="nsub">${first?"登録してはじめる":"保存する"}</button>
       ${first?"":`<button class="btn ghost" type="button" id="ncancel">変更しないで戻る</button>`}
     </form></section>`;
-  $("#nick").value=P.display_name||"";$("#fname").value=P.full_name||meta.full_name||meta.name||"";$("#mail").value=P.email||S.session.user.email||"";
+  $("#nick").value=P.display_name||"";if(withName)$("#fname").value=P.full_name||meta.full_name||meta.name||"";$("#mail").value=P.email||S.session.user.email||"";
   $("#ncancel")?.addEventListener("click",()=>{S.editProfile=false;S.error="";render()});
   $("#nf").addEventListener("submit",async e=>{
-    e.preventDefault();const nick=$("#nick").value.trim(),fname=$("#fname").value.trim();if(!nick||!fname)return;
+    e.preventDefault();const nick=$("#nick").value.trim(),fname=withName?$("#fname").value.trim():null;if(!nick||(withName&&!fname))return;
     $("#nsub").disabled=true;
-    const {error}=await S.sb.from("profiles").update({display_name:nick,full_name:fname}).eq("id",S.session.user.id);
+    const upd=withName?{display_name:nick,full_name:fname}:{display_name:nick};
+    let {error}=await S.sb.from("profiles").update(upd).eq("id",S.session.user.id);
+    if(error&&/full_name/.test(error.message)){({error}=await S.sb.from("profiles").update({display_name:nick}).eq("id",S.session.user.id));delete S.profile.full_name}
     if(error){S.error="保存できませんでした："+error.message;render();return}
-    Object.assign(S.profile,{display_name:nick,full_name:fname});S.error="";S.editProfile=false;render();
+    Object.assign(S.profile,withName&&("full_name" in S.profile)?{display_name:nick,full_name:fname}:{display_name:nick});S.error="";S.editProfile=false;render();
   });
 }
 
