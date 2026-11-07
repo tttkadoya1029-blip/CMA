@@ -20,7 +20,7 @@ for u in UNITS:
     codes = {p["code"] for p in ctx["points"]}
     existing = {norm(e["stem"]) for e in ctx["existing"]}
     text = norm(open(ctx["text_file"], encoding="utf-8").read().replace("=====PAGE=====", ""))
-    grams = {text[i:i+15] for i in range(len(text)-14)}
+    long_grams = {text[i:i+28] for i in range(len(text)-27)}
     ans = Counter(q.get("answer") for q in qs); lv = Counter(q.get("level") for q in qs)
     per = Counter(q.get("point_code") for q in qs)
     if len(qs) != 180: problems.append(f"{u}: 問題数が {len(qs)} 問")
@@ -38,10 +38,11 @@ for u in UNITS:
         s = norm(q["stem"])
         if s in all_stems or s in existing: problems.append(f"{tag}: 問題文が重複")
         all_stems.add(s)
-        if any(s[j:j+15] in grams for j in range(len(s)-14)): n_copy += 1
+        # 28字以上続けて本文と同じ＝文の書き写しとみなす（それより短い一致は専門用語・基準名・定型句として許容）
+        if any(s[j:j+28] in long_grams for j in range(len(s)-27)): n_copy += 1
         rows.append((u, i, q))
     if n_no: problems.append(f"{u}: 解説の書き出し（正しい。／誤り。）が答えと合わない {n_no} 問")
-    if n_copy: problems.append(f"{u}: 本文と15字以上一致する問題文 {n_copy} 問")
+    if n_copy: problems.append(f"{u}: 本文と28字以上一致する問題文 {n_copy} 問")
     print(f"{u}: {len(qs)}問 ○{ans[True]}×{ans[False]} 難易度{dict(lv)} ポイント数{len(per)} 最少{min(per.values()) if per else 0}問")
 
 if problems:

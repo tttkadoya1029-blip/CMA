@@ -6,6 +6,7 @@
 - `index.html` … 画面とロジックすべて（ビルドなし）。`config.js` … Supabase接続情報（anon keyのみ。公開してよい）
 - `supabase/schema.sql` … テーブル・RLS・関数。何度実行しても壊れないように書く（create if not exists / add column if not exists / drop policy if exists）
 - `supabase/seed_questions.sql` … 学習ポイント（1001〜1026）と問題。問題は必ず `point_code` で学習ポイントに紐づける
+- `supabase/seed_finance_extra.sql` … 科目Ⅱ 財務分析の追加900問（第1〜5回・各180問）。原本は `dev/finance_extra/out_II-N.json`。直したら `python3 dev/build_finance_extra.py <JSONとctx・本文のあるフォルダ>` で作り直す
 - `dev/` … 表示確認用（にせSupabaseとスクリーンショットスクリプト）。Vercelには上げない
 
 ## 変更したら必ずやること
