@@ -22,7 +22,7 @@ function qb(t){let f=[],op="select",payload=null;const rows=()=>db[t].filter(r=>
   insert(p){op="insert";payload=p;return api},update(p){op="update";payload=p;return api},
   then(res){if(op==="update")rows().forEach(r=>Object.assign(r,payload));res({data:rows(),error:null})}};return api}
 function stats(key){const g={};db.attempts.forEach(a=>{const k=key(a);(g[k]=g[k]||[]).push(a)});
-  return Object.entries(g).map(([k,a])=>{const t=a.map(x=>x.time_ms).sort((x,y)=>x-y);return {k,n:a.length,accuracy:a.filter(x=>x.is_correct).length/a.length,median_ms:t[t.length>>1]}})}
+  return Object.entries(g).map(([k,a])=>{const t=a.map(x=>x.time_ms).sort((x,y)=>x-y);return {k,n:a.length,accuracy:a.filter(x=>x.is_correct).length/a.length,median_ms:t[t.length>>1],unsure_rate:a.filter(x=>x.choice==null).length/a.length}})}
 window.supabase={createClient:()=>({
   auth:{getSession:async()=>({data:{session:localStorage.getItem("stub_logged")?{user:{id:"u1",email:"me@example.com"}}:null}}),onAuthStateChange(){},
     signInWithPassword:async()=>{localStorage.setItem("stub_logged","1");location.reload();return {data:{},error:null}},
@@ -34,7 +34,11 @@ window.supabase={createClient:()=>({
     if(name==="get_point_stats")return {data:stats(x=>Q.find(q=>q.id===x.question_id).point_code).map(s=>({point_code:s.k,...s})),error:null};
     if(name==="get_exam_ranking")return {data:[{rank:1,display_name:"受講者B",correct:5,total:5,total_ms:61000,median_ms:12000,is_me:false},{rank:2,display_name:"テストユーザー（とても長い名前の人）",correct:4,total:5,total_ms:52000,median_ms:9800,is_me:true}],error:null};
     if(name==="get_activity_ranking")return {data:[{rank:1,display_name:"受講者B",answers:40,sessions:8,is_me:false},{rank:2,display_name:"テストユーザー（とても長い名前の人）",answers:12,sessions:3,is_me:true}],error:null};
-    if(name==="submit_answer"){const q=Q.find(x=>x.id===a.p_question),ok=a.p_choice===q.answer;
+    if(name==="start_exam"){const sk=c=>{const u=points.find(p=>p.code===c)?.unit_key||"";return u==="III-3"?"III-Q":u.split("-")[0]};
+      const pool=Q.filter(q=>a.p_scope==="all"||sk(q.point_code)===a.p_scope).map(q=>[Math.random(),q]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+      const sel=pool.slice(0,a.p_limit==null?pool.length:a.p_limit),sid="sess"+(n++);db.sessions.push({id:sid,mode:"exam",question_count:sel.length});
+      return {data:sel.map(({answer,explanation,...r})=>({session_id:sid,...r})),error:null}}
+    if(name==="submit_answer"){const q=Q.find(x=>x.id===a.p_question),ok=a.p_choice!=null&&a.p_choice===q.answer;
       db.attempts.push({id:db.attempts.length+1,user_id:"u1",session_id:a.p_session,question_id:q.id,choice:a.p_choice,is_correct:ok,time_ms:a.p_time_ms,answered_at:iso(Date.now()),sessions:{mode:"practice"}});
       return {data:[{is_correct:ok,answer:q.answer,explanation:q.explanation}],error:null}}
     return {data:null,error:{message:"unknown rpc "+name}};

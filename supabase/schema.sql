@@ -77,27 +77,39 @@ insert into public.units (key, subject, no, title, sort) values
 on conflict (key) do nothing;
 alter table public.points add column if not exists unit_key text references public.units(key);
 update public.points set unit_key='I-1' where unit_key is null and code like '10%';
--- 試験の範囲（units.key）。試験モードは「その回の全問」を解き、ランキングも回ごと
+-- 試験の範囲：'all'（すべて）または科目キー（I / II / III / III-Q）
 alter table public.sessions add column if not exists scope text;
 update public.sessions set scope='I-1' where scope is null and mode='exam';
 
--- 試験モードは「その時点の全問」を解く。問題数はサーバー側で確定させる（ランキングの公平性のため）
+-- 学習ポイントの「科目キー」（III-3 は科目Ⅲ 数量分析として別扱い）
+create or replace function public.subject_key(p_unit text, p_code text) returns text
+language sql immutable as $$
+  select case when p_unit = 'III-3' then 'III-Q'
+              when p_unit is not null then split_part(p_unit, '-', 1)
+              when p_code like '10%' then 'I' else '' end;
+$$;
+
+-- 受験ごとに出題した問題（解答できるのはこの問題だけ）
+create table if not exists public.session_questions (
+  session_id  uuid not null references public.sessions(id) on delete cascade,
+  question_id text not null references public.questions(id),
+  position    int  not null,
+  primary key (session_id, question_id)
+);
+
+-- 受験は start_exam からだけ作る（画面から直接 sessions を作らせない）
 create or replace function public.sessions_before_insert() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   new.user_id := auth.uid();
-  if new.mode = 'exam' then
-    if new.scope is null or not exists (select 1 from public.units u where u.key = new.scope) then
-      raise exception '試験の範囲を選んでください';
-    end if;
-    new.question_count := (select count(*) from public.questions q join public.points p on p.code = q.point_code
-                           where q.active and p.unit_key = new.scope);
-  end if;
   return new;
 end $$;
 drop trigger if exists sessions_before_insert on public.sessions;
 create trigger sessions_before_insert before insert on public.sessions
   for each row execute function public.sessions_before_insert();
+
+-- 3択（○・×・わからない）：わからない = choice が null（不正解として採点）
+alter table public.attempts alter column choice drop not null;
 
 -- ---------- 講師かどうか ----------
 create or replace function public.is_teacher() returns boolean
@@ -128,6 +140,33 @@ language sql stable security definer set search_path = public as $$
   where q.active and auth.uid() is not null order by q.sort, q.id;
 $$;
 
+-- ---------- 受験を始める（範囲と問題数を指定。正答は返さない） ----------
+-- p_scope: 'all' または科目キー。p_limit: 問題数（null なら範囲内の全問）
+drop function if exists public.start_exam(text, int);
+create or replace function public.start_exam(p_scope text, p_limit int default null)
+returns table(session_id uuid, id text, point_code text, level text, stem text)
+language plpgsql security definer set search_path = public as $$
+declare v_sid uuid; v_pool int; v_count int; v_scope text := coalesce(nullif(p_scope, ''), 'all');
+begin
+  if auth.uid() is null then raise exception 'ログインが必要です'; end if;
+  if p_limit is not null and p_limit < 1 then raise exception '問題数は1問以上にしてください'; end if;
+  select count(*) into v_pool from public.questions q join public.points p on p.code = q.point_code
+   where q.active and (v_scope = 'all' or public.subject_key(p.unit_key, p.code) = v_scope);
+  if v_pool = 0 then raise exception '出題できる問題がありません'; end if;
+  v_count := least(v_pool, coalesce(p_limit, v_pool));
+  insert into public.sessions(user_id, mode, scope, question_count)
+  values (auth.uid(), 'exam', v_scope, v_count) returning sessions.id into v_sid;
+  insert into public.session_questions(session_id, question_id, position)
+  select v_sid, x.id, row_number() over ()
+  from (select q.id from public.questions q join public.points p on p.code = q.point_code
+        where q.active and (v_scope = 'all' or public.subject_key(p.unit_key, p.code) = v_scope)
+        order by random() limit v_count) x;
+  return query
+    select v_sid, q.id, q.point_code, q.level, q.stem
+    from public.session_questions sq join public.questions q on q.id = sq.question_id
+    where sq.session_id = v_sid order by sq.position;
+end $$;
+
 -- ---------- 解答の提出（正誤はサーバー側で判定。改ざん防止） ----------
 create or replace function public.submit_answer(p_session uuid, p_question text, p_choice boolean, p_time_ms int)
 returns table(is_correct boolean, answer boolean, explanation text)
@@ -138,9 +177,10 @@ begin
   if not exists (select 1 from public.sessions s where s.id = p_session and s.user_id = auth.uid() and s.finished_at is null) then
     raise exception 'この受験記録には書き込めません';
   end if;
-  select * into q from public.questions where questions.id = p_question and active;
-  if not found then raise exception '問題が見つかりません'; end if;
-  ok := (p_choice = q.answer);
+  select qq.* into q from public.session_questions sq join public.questions qq on qq.id = sq.question_id
+   where sq.session_id = p_session and sq.question_id = p_question;
+  if not found then raise exception 'この問題はこの受験で出題されていません'; end if;
+  ok := coalesce(p_choice = q.answer, false);   -- わからない(null)は不正解
   insert into public.attempts(session_id, user_id, question_id, choice, is_correct, time_ms)
   values (p_session, auth.uid(), p_question, p_choice, ok, greatest(0, least(p_time_ms, 3600000)))
   on conflict (session_id, question_id) do nothing;   -- 同じ問題の二重送信は最初の1回だけ有効
@@ -153,10 +193,11 @@ end $$;
 -- 時間は中央値。5分超（離席とみなす）は時間の集計から除外
 drop function if exists public.get_question_stats();
 create or replace function public.get_question_stats()
-returns table(question_id text, n bigint, accuracy numeric, median_ms numeric)
+returns table(question_id text, n bigint, accuracy numeric, median_ms numeric, unsure_rate numeric)
 language sql stable security definer set search_path = public as $$
   select a.question_id, count(*), round(avg(a.is_correct::int)::numeric, 4),
-         round((percentile_cont(0.5) within group (order by a.time_ms) filter (where a.time_ms <= 300000))::numeric)
+         round((percentile_cont(0.5) within group (order by a.time_ms) filter (where a.time_ms <= 300000))::numeric),
+         round(avg((a.choice is null)::int)::numeric, 4)
   from public.attempts a where auth.uid() is not null group by a.question_id;
 $$;
 
@@ -170,11 +211,11 @@ language sql stable security definer set search_path = public as $$
   where auth.uid() is not null group by q.point_code;
 $$;
 
--- ---------- 試験モードのランキング ----------
--- 各自のベスト記録（全問解答済みの試験）で、正答率が高い順 → 同率なら合計時間が短い順
+-- ---------- 試験のランキング ----------
+-- 10問以上を最後まで解いた試験の自己ベストで比べる。正答率が高い順 → 同率なら1問あたりの時間（中央値）が短い順
 drop function if exists public.get_exam_ranking();
 drop function if exists public.get_exam_ranking(text);
-create or replace function public.get_exam_ranking(p_scope text)
+create or replace function public.get_exam_ranking()
 returns table(rank bigint, display_name text, correct int, total int, total_ms bigint, median_ms numeric, finished_at timestamptz, is_me boolean)
 language sql stable security definer set search_path = public as $$
   with s as (
@@ -184,14 +225,15 @@ language sql stable security definer set search_path = public as $$
            coalesce(sum(a.time_ms), 0)::bigint as total_ms,
            percentile_cont(0.5) within group (order by a.time_ms) as median_ms
     from public.sessions s join public.attempts a on a.session_id = s.id
-    where s.mode = 'exam' and s.scope = p_scope and s.finished_at is not null and s.question_count > 0
+    where s.mode = 'exam' and s.finished_at is not null and s.question_count >= 10
+      and exists (select 1 from public.session_questions sq where sq.session_id = s.id)
     group by s.id
   ), best as (
     select distinct on (s.user_id) s.* from s
     where s.answered >= s.question_count
-    order by s.user_id, s.correct::numeric / s.question_count desc, s.total_ms asc
+    order by s.user_id, s.correct::numeric / s.question_count desc, s.median_ms asc
   )
-  select rank() over (order by b.correct::numeric / b.question_count desc, b.total_ms asc),
+  select rank() over (order by b.correct::numeric / b.question_count desc, b.median_ms asc),
          coalesce(nullif(p.display_name, ''), '名前未登録'), b.correct, b.question_count, b.total_ms,
          round(b.median_ms::numeric), b.finished_at, b.user_id = auth.uid()
   from best b join public.profiles p on p.id = b.user_id
@@ -220,6 +262,11 @@ alter table public.sessions  enable row level security;
 alter table public.attempts  enable row level security;
 alter table public.points    enable row level security;
 alter table public.units     enable row level security;
+alter table public.session_questions enable row level security;
+
+drop policy if exists "session_questions: 本人か講師が読める" on public.session_questions;
+create policy "session_questions: 本人か講師が読める" on public.session_questions for select
+  using (exists (select 1 from public.sessions s where s.id = session_id and s.user_id = auth.uid()) or public.is_teacher());
 
 drop policy if exists "units: ログインしていれば読める" on public.units;
 create policy "units: ログインしていれば読める" on public.units for select
@@ -249,12 +296,14 @@ drop policy if exists "questions: 講師が全操作" on public.questions;
 create policy "questions: 講師が全操作" on public.questions for all
   using (public.is_teacher()) with check (public.is_teacher());
 
+-- 受験は start_exam からだけ作る（画面から直接 insert させない）
 drop policy if exists "sessions: 本人が開始" on public.sessions;
-create policy "sessions: 本人が開始" on public.sessions for insert
-  with check (user_id = auth.uid());
 drop policy if exists "sessions: 本人か講師が読める" on public.sessions;
 create policy "sessions: 本人か講師が読める" on public.sessions for select
   using (user_id = auth.uid() or public.is_teacher());
+-- 本人が変えられるのは終了時刻だけ（範囲や問題数は書き換えられない）
+revoke update on public.sessions from anon, authenticated;
+grant update (finished_at) on public.sessions to authenticated;
 drop policy if exists "sessions: 本人が終了を記録" on public.sessions;
 create policy "sessions: 本人が終了を記録" on public.sessions for update
   using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -267,12 +316,17 @@ create policy "attempts: 本人か講師が読める" on public.attempts for sel
 grant execute on function public.get_questions() to authenticated;
 grant execute on function public.get_question_stats() to authenticated;
 grant execute on function public.get_point_stats() to authenticated;
-grant execute on function public.get_exam_ranking(text) to authenticated;
+grant execute on function public.get_exam_ranking() to authenticated;
+grant execute on function public.start_exam(text, int) to authenticated;
 grant execute on function public.get_activity_ranking(int) to authenticated;
 revoke execute on function public.get_question_stats() from anon, public;
 revoke execute on function public.get_point_stats() from anon, public;
-revoke execute on function public.get_exam_ranking(text) from anon, public;
+revoke execute on function public.get_exam_ranking() from anon, public;
+revoke execute on function public.start_exam(text, int) from anon, public;
 revoke execute on function public.get_activity_ranking(int) from anon, public;
 grant execute on function public.submit_answer(uuid, text, boolean, int) to authenticated;
 revoke execute on function public.submit_answer(uuid, text, boolean, int) from anon, public;
 revoke execute on function public.get_questions() from anon, public;
+
+-- ---------- 変更をすぐAPIに反映させる ----------
+notify pgrst, 'reload schema';

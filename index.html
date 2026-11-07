@@ -56,7 +56,7 @@ p{margin:0}
 .row.end{justify-content:flex-end}
 .row.between{justify-content:space-between}
 /* iOSは16px未満の入力欄でズームするため16px */
-input[type=text],input[type=email],input[type=password],input[type=url],select{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);min-width:0;width:100%}
+input[type=text],input[type=email],input[type=password],input[type=url],input[type=number],select{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);min-width:0;width:100%}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)}
 .auth{max-width:440px;width:100%;margin:0 auto}
 .divider{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:12px}
@@ -83,12 +83,13 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--in
 .progress{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--accent);transition:width .3s}
 .stem{font-size:18px;line-height:1.85;font-weight:500}
-.marks{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.marks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .mark{font:inherit;border:2px solid var(--rule);background:var(--sheet);border-radius:10px;padding:16px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .mark .sym{font-size:44px;line-height:1;font-weight:900}
 .mark .lb{font-size:13px;color:var(--ink-2)}
 @media (hover:hover){.mark.m:hover:not(:disabled){border-color:var(--maru);background:var(--maru-soft)}.mark.b:hover:not(:disabled){border-color:var(--batsu);background:var(--batsu-soft)}}
-.mark.m .sym{color:var(--maru)} .mark.b .sym{color:var(--batsu)}
+.mark.m .sym{color:var(--maru)} .mark.b .sym{color:var(--batsu)} .mark.u .sym{color:var(--ink-2);font-size:36px}
+.mark.u .lb{white-space:nowrap}
 .mark.chosen{border-color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
 .mark:disabled{cursor:default}
 .verdict{border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
@@ -101,7 +102,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--in
 .li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;padding:12px 14px;border-bottom:1px solid var(--rule);align-items:start;min-width:0}
 .li:last-child{border-bottom:0}
 .li .mk{font-size:20px;font-weight:900;line-height:1.3;min-width:24px;text-align:center}
-.li .mk.ok{color:var(--maru)} .li .mk.ng{color:var(--batsu)}
+.li .mk.ok{color:var(--maru)} .li .mk.ng{color:var(--batsu)} .li .mk.un{color:var(--ink-2)}
 .li .body{min-width:0;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .li .side{font-family:var(--f-mono);font-size:13px;color:var(--ink-2);text-align:right;white-space:nowrap}
 .li .actions{grid-column:2 / -1;display:flex;gap:8px;flex-wrap:wrap}
@@ -141,19 +142,33 @@ th.first{background:var(--paper)}
 .seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
 .seg button{flex:1;font:inherit;font-size:14px;padding:10px 8px;border:0;background:var(--sheet);color:var(--ink);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg.grid{display:grid;gap:1px;background:var(--rule)}
+.seg.grid button{line-height:1.4;min-height:52px}
+.seg.grid button small{display:block;font-size:11px;color:var(--ink-2);font-family:var(--f-mono)}
+.seg.grid button[aria-pressed="true"] small{color:inherit;opacity:.8}
+.seg.grid button:disabled{color:var(--ink-2);opacity:.45;cursor:default}
+.seg.scope{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.seg.count{grid-template-columns:repeat(5,1fr)}
+@media (max-width:480px){.seg.count{grid-template-columns:repeat(4,1fr)}.seg.count button[data-count="all"]{grid-column:1 / -1;min-height:44px}.seg.count button[data-count="all"] small{display:inline;margin-left:6px}}
+.custom{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);flex-wrap:wrap}
+.custom span{white-space:nowrap}
+.custom input{width:96px!important;flex:none;text-align:right;font-family:var(--f-mono)}
+.summary{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px;color:var(--ink-2);align-items:baseline}
+.summary b{font-family:var(--f-mono);color:var(--ink);font-size:18px}
+.confirm{border:1px solid var(--batsu);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--batsu-soft)}
 .vid-row{display:grid;grid-template-columns:1fr;gap:6px;padding:12px 14px;border-bottom:1px solid var(--rule)}
 .vid-row:last-child{border-bottom:0}
 .vid-row .in{display:flex;gap:8px}
 .vid-row .st{font-size:12px;color:var(--ink-2);min-height:1em}
 details summary{cursor:pointer;color:var(--ink-2);font-size:13px}
-@media (max-width:480px){.sheet{padding:16px}.stem{font-size:17px}.mark .sym{font-size:40px}h1{font-size:20px}}
+@media (max-width:480px){.sheet{padding:16px}.stem{font-size:17px}.mark{padding:14px 4px}.mark .sym{font-size:38px}.mark.u .sym{font-size:32px}.mark .lb{font-size:12px}h1{font-size:20px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><b>CMA正誤トレーナー</b><span>証券アナリスト第1次 科目Ⅰ</span></div>
+    <div class="brand"><b>CMA正誤トレーナー</b></div>
     <div class="who" id="who"></div>
   </header>
   <nav class="tabs" id="tabs" hidden>
@@ -172,7 +187,7 @@ const OUTLIER_MS=300000; // 5分超は離席とみなし時間の集計から除
 const SLOW_MS=45000;     // 全体データが少ないときの「時間がかかった」目安
 const S={sb:null,session:null,profile:null,questions:[],QMAP:{},points:{},myAttempts:[],qstats:{},pstats:{},
   view:"home",quiz:null,lastResult:null,sample:false,student:null,error:"",teacherData:null,teacherLoading:false,
-  authMode:"login",authMsg:"",practicePoint:"",rankTab:"exam",ranking:null};
+  authMode:"login",authMsg:"",pick:{scope:"all",count:20},rankTab:"exam",ranking:null};
 const $=s=>document.querySelector(s), app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sec=ms=>ms==null||isNaN(ms)?"—":(ms/1000).toFixed(1)+"秒";
@@ -220,6 +235,9 @@ async function onAuth(session){
   document.querySelector('.tab[data-view="teacher"]').hidden=!isTeacher();
   setTab("home");render();
 }
+const choiceLabel=c=>c===true?"○":c===false?"×":"わからない";
+const unsure=list=>list.length?list.filter(a=>a.choice==null).length/list.length:null;
+const markOf=x=>x.correct?`<span class="mk ok">○</span>`:x.choice==null?`<span class="mk un" title="わからない">？</span>`:`<span class="mk ng">×</span>`;
 const SUBJECTS=[["I","科目Ⅰ 証券分析とポートフォリオ・マネジメント"],["II","科目Ⅱ 財務分析"],["III","科目Ⅲ 市場と経済の分析"],["III-Q","科目Ⅲ 数量分析"]];
 const subjectOf=code=>{const u=S.points[code]?.unit_key||"";return u==="III-3"?"III-Q":u?u.split("-")[0]:(String(code).startsWith("10")?"I":"")};
 const usedPoints=()=>[...new Set(S.questions.map(q=>q.point_code))].sort();
@@ -229,7 +247,7 @@ async function loadMine(){
 }
 async function loadStats(){
   const [qs,ps]=await Promise.all([S.sb.rpc("get_question_stats"),S.sb.rpc("get_point_stats")]);
-  S.qstats=Object.fromEntries((qs.data||[]).map(r=>[r.question_id,{n:+r.n,acc:+r.accuracy,med:r.median_ms==null?null:+r.median_ms}]));
+  S.qstats=Object.fromEntries((qs.data||[]).map(r=>[r.question_id,{n:+r.n,acc:+r.accuracy,med:r.median_ms==null?null:+r.median_ms,unsure:r.unsure_rate==null?null:+r.unsure_rate}]));
   S.pstats=Object.fromEntries((ps.data||[]).map(r=>[r.point_code,{n:+r.n,acc:+r.accuracy,med:r.median_ms==null?null:+r.median_ms}]));
 }
 const toAns=r=>({sid:r.session_id,qid:r.question_id,choice:r.choice,correct:r.is_correct,ms:r.time_ms,at:new Date(r.answered_at).getTime(),uid:r.user_id,mode:r.sessions?.mode||"practice"});
@@ -350,31 +368,40 @@ function renderHome(){
   const acc=ans.length?ans.filter(a=>a.correct).length/ans.length:null;
   const rows=myPointRows(ans);
   const weak=rows.filter(r=>r.d&&r.d.c!=="green").sort((a,b)=>a.ac-b.ac);
+  const P=S.pick,poolOf=k=>k==="all"?S.questions:S.questions.filter(q=>subjectOf(q.point_code)===k);
+  const pool=poolOf(P.scope),n=P.count==null?pool.length:Math.min(P.count,pool.length),isPreset=P.count==null||PRESETS.includes(P.count);
+  const myMed=medT(ans)||40000;
   app.innerHTML=`<section class="sheet">
-    <h1>問題を解く</h1>
+    <h1>本番モードで挑戦</h1>
+    <p class="muted">1問ごとに解答時間を計り、正誤と解説は最後にまとめて表示します。解答は「○」「×」「わからない」の3択です。</p>
     ${S.error?`<div class="note">${esc(S.error)}</div>`:""}
-    ${S.questions.length?`<div class="modes">
-      <div class="mode"><h2>練習モード <span class="pill p">ランキング対象外</span></h2>
-        <p class="muted">1問ごとに正誤と解説、みんなの正答率を表示します。論点をしぼって練習できます。</p>
-        <label class="f">出題範囲<select id="pp"><option value="">すべて（${S.questions.length}問）</option>
-          ${SUBJECTS.map(([k,l])=>{const n=S.questions.filter(q=>subjectOf(q.point_code)===k).length;return n?`<option value="s:${k}" ${S.practicePoint==="s:"+k?"selected":""}>${esc(l)}（${n}問）</option>`:""}).join("")}
-          ${S.practicePoint&&!S.practicePoint.startsWith("s:")?`<option value="${esc(S.practicePoint)}" selected>${esc(plabel(S.practicePoint))}</option>`:""}</select></label>
-        <button class="btn accent" id="startP">練習をはじめる</button></div>
-      <div class="mode"><h2>試験モード <span class="pill e">ランキング対象</span></h2>
-        <p class="muted">全${S.questions.length}問を続けて解き、最後にまとめて採点します。正答率と解答時間でランキングを競います。</p>
-        <button class="btn" id="startE">試験をはじめる</button></div>
-    </div>`:`<div class="note">問題がまだ登録されていません。講師に連絡してください。</div>`}
+    ${S.questions.length?`<h3>範囲を選ぶ</h3>
+    <div class="seg grid scope" role="group" aria-label="範囲">
+      <button data-scope="all" aria-pressed="${P.scope==="all"}">すべて<small>${S.questions.length}問</small></button>
+      ${SUBJECTS.map(([k,l])=>{const c=poolOf(k).length;return c?`<button data-scope="${esc(k)}" aria-pressed="${P.scope===k}">${esc(l)}<small>${c}問</small></button>`:""}).join("")}
+    </div>
+    <h3>問題数を選ぶ</h3>
+    <div class="seg grid count" role="group" aria-label="問題数">
+      ${PRESETS.map(k=>`<button data-count="${k}" aria-pressed="${P.count===k}" ${k>pool.length?"disabled":""}>${k}問</button>`).join("")}
+      <button data-count="all" aria-pressed="${P.count==null}">すべて<small>${pool.length}問</small></button>
+    </div>
+    <label class="custom"><span>自由に指定</span><input type="number" id="cnum" inputmode="numeric" min="1" max="${pool.length}" step="1" value="${isPreset?"":P.count}" placeholder="例 15"><span>問（1〜${pool.length}問）</span></label>
+    <div class="summary"><span>出題 <b>${n}</b>問</span><span>${n<pool.length?`${pool.length}問から抽選`:`範囲内の全問`}</span><span>目安 約<b>${Math.max(1,Math.round(n*myMed/60000))}</b>分</span></div>
+    <button class="btn accent" id="startE" ${n?"":"disabled"}>${n}問で開始する</button>
+    <p class="muted">10問以上を最後まで解くと、ランキングの対象になります。</p>`
+    :`<div class="note">問題がまだ登録されていません。講師に連絡してください。</div>`}
   </section>
   ${weak.length?`<section class="sheet"><h2>見直したい論点</h2>
     <p class="muted">正答率が低い、または時間がかかっている論点です。</p>
     <div class="list">${weak.map(r=>`<div class="li"><span class="mk">${tagHtml(r.d)}</span>
       <div class="body"><b>${esc(plabel(r.code))}</b><div class="kv"><span>あなた <b>${pct(r.ac)}</b>・<b>${sec(r.tm)}</b></span><span>みんな <b>${pct(r.all?.acc)}</b>・<b>${sec(r.all?.med)}</b></span></div></div><span></span>
-      <div class="actions">${videoBtn(r.code)}<button class="btn ghost small" data-practice="${esc(r.code)}">この論点を練習</button></div></div>`).join("")}</div>
+      ${safeUrl(S.points[r.code]?.video_url||"")?`<div class="actions">${videoBtn(r.code)}</div>`:""}</div>`).join("")}</div>
   </section>`:""}
   <section class="sheet"><h2>あなたの記録</h2>
     ${ans.length?`<div class="stats">
       <div class="stat"><div class="k">解答数</div><div class="v">${ans.length}<small> 問</small></div></div>
       <div class="stat"><div class="k">正答率</div><div class="v">${pct(acc)}</div></div>
+      <div class="stat"><div class="k">わからない</div><div class="v">${pct(unsure(ans))}</div></div>
       <div class="stat"><div class="k">解答時間（中央値）</div><div class="v">${sec(medT(ans)).replace("秒","")}<small> 秒</small></div></div>
       <div class="stat"><div class="k">取り組んだ回数</div><div class="v">${sessions.length}<small> 回</small></div></div></div>
     <h3>学習ポイント別（あなた／みんな）</h3>
@@ -383,29 +410,33 @@ function renderHome(){
       <span class="side">${r.n}問</span>${safeUrl(S.points[r.code]?.video_url||"")?`<div class="actions">${videoBtn(r.code)}</div>`:""}</div>`).join("")}</div>
     <p class="muted">時間はすべて中央値（極端に遅い1回に引っ張られない値）です。5分超は離席とみなして除外しています。</p>
     <h3>履歴</h3>
-    <div class="list">${sessions.slice(0,10).map(a=>`<div class="li"><span class="mk" style="font-size:13px">${a[0].mode==="exam"?`<span class="pill e">試験</span>`:`<span class="pill p">練習</span>`}</span>
-      <div class="body"><span>${fmtDate(a[0].at)}</span></div><span class="side"><b style="color:var(--ink)">${a.filter(x=>x.correct).length}/${a.length}</b>　${sec(medT(a))}</span></div>`).join("")}</div>`
-    :`<div class="empty">まだ記録がありません。練習モードか試験モードではじめましょう。</div>`}
+    <div class="list">${sessions.slice(0,10).map(a=>`<div class="li"><span class="mk" style="font-size:14px;font-family:var(--f-mono)">${Math.round(a.filter(x=>x.correct).length/a.length*100)}%</span>
+      <div class="body"><span>${fmtDate(a[0].at)}・${a.length}問</span><span class="muted">わからない ${a.filter(x=>x.choice==null).length}問</span></div><span class="side"><b style="color:var(--ink)">${a.filter(x=>x.correct).length}/${a.length}</b>　${sec(medT(a))}</span></div>`).join("")}</div>`
+    :`<div class="empty">まだ記録がありません。上の「開始する」からはじめましょう。</div>`}
   </section>`;
-  $("#pp")?.addEventListener("change",e=>{S.practicePoint=e.target.value});
-  $("#startP")?.addEventListener("click",()=>startQuiz("practice",S.practicePoint));
-  $("#startE")?.addEventListener("click",()=>startQuiz("exam"));
-  document.querySelectorAll("[data-practice]").forEach(b=>b.addEventListener("click",()=>{S.practicePoint=b.dataset.practice;startQuiz("practice",b.dataset.practice)}));
+  document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{S.pick.scope=b.dataset.scope;renderHome()}));
+  document.querySelectorAll("[data-count]").forEach(b=>b.addEventListener("click",()=>{S.pick.count=b.dataset.count==="all"?null:+b.dataset.count;renderHome()}));
+  $("#cnum")?.addEventListener("change",e=>{const v=Math.floor(+e.target.value);if(v>=1)S.pick.count=Math.min(v,pool.length);renderHome()});
+  $("#startE")?.addEventListener("click",startQuiz);
 }
+const PRESETS=[10,20,30,50];
 
 /* ===== 出題 ===== */
 let tick=null;
-async function startQuiz(mode,point){
-  document.querySelectorAll("#startP,#startE").forEach(b=>b.disabled=true);
-  const pool=S.questions.filter(q=>mode==="exam"||!point||(point.startsWith("s:")?subjectOf(q.point_code)===point.slice(2):q.point_code===point));
-  const {data,error}=await S.sb.from("sessions").insert({user_id:S.session.user.id,mode,question_count:pool.length}).select("id").single();
-  if(error){S.error="開始できませんでした："+error.message;render();return}
+async function startQuiz(){
+  const btn=$("#startE");if(btn)btn.disabled=true;
+  const {data,error}=await S.sb.rpc("start_exam",{p_scope:S.pick.scope,p_limit:S.pick.count});
+  if(error||!data?.length){
+    S.error=/Could not find the function|schema cache/i.test(error?.message||"")
+      ?"データベースの更新がまだのため開始できません。管理者の方は Supabase の SQL Editor で supabase/schema.sql を実行してください。"
+      :"開始できませんでした："+(error?.message||"問題がありません");
+    render();return}
   await loadStats().catch(()=>{});
-  S.quiz={sid:data.id,mode,order:shuffle(pool.map(q=>q.id)),i:0,answers:[],answered:false,done:false,paused:0,hiddenAt:null,t0:0,inflight:[]};
+  S.quiz={sid:data[0].session_id,mode:"exam",order:data.map(r=>r.id),i:0,answers:[],answered:false,done:false,paused:0,hiddenAt:null,t0:0,confirm:false};
   S.lastResult=null;S.error="";showQuestion();window.scrollTo(0,0);
 }
 function showQuestion(){
-  const q=S.quiz;q.answered=false;q.paused=0;q.hiddenAt=null;q.choice=null;
+  const q=S.quiz;q.answered=false;q.paused=0;q.hiddenAt=null;q.choice=null;q.confirm=false;
   renderQuiz();q.t0=performance.now();clearInterval(tick);
   const med=S.qstats[q.order[q.i]]?.med; // みんなの中央値を超えたらタイマーの色を変える
   tick=setInterval(()=>{const el=$("#tm");if(el&&!q.answered){const t=elapsed();el.textContent=fmtT(t);el.classList.toggle("over",med!=null&&t>med)}},100);
@@ -413,10 +444,10 @@ function showQuestion(){
 function elapsed(){const q=S.quiz;let p=q.paused;if(q.hiddenAt)p+=performance.now()-q.hiddenAt;return Math.max(0,performance.now()-q.t0-p)}
 const fmtT=ms=>{const s=ms/1000;return s<60?s.toFixed(1):Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0")};
 function renderQuiz(){
-  const q=S.quiz,item=S.QMAP[q.order[q.i]],last=q.answers[q.i],exam=q.mode==="exam";
+  const q=S.quiz,item=S.QMAP[q.order[q.i]];
   const st=S.qstats[item.id];
   app.innerHTML=`<section class="sheet">
-    <div class="qmeta"><span class="l"><span class="pill ${exam?"e":"p"}">${exam?"試験":"練習"}</span><span class="qno">${q.i+1} / ${q.order.length}</span></span>
+    <div class="qmeta"><span class="l"><span class="qno">${q.i+1} / ${q.order.length}</span></span>
       <span class="tbox"><span class="timer${q.answered&&st?.med!=null&&q.lastMs>st.med?" over":""}" id="tm" aria-label="経過時間">${q.answered?fmtT(q.lastMs):"0.0"}</span>
         <span class="tref" id="tref">みんなの中央値 <b>${st?.med!=null?sec(st.med):"データなし"}</b></span></span></div>
     <div><span class="chip">${esc(plabel(item.point_code))}</span></div>
@@ -425,17 +456,20 @@ function renderQuiz(){
     <div class="marks">
       <button class="mark m ${q.choice===true?"chosen":""}" id="ans-true" ${q.answered?"disabled":""}><span class="sym">○</span><span class="lb">正しい</span></button>
       <button class="mark b ${q.choice===false?"chosen":""}" id="ans-false" ${q.answered?"disabled":""}><span class="sym">×</span><span class="lb">誤り</span></button>
+      <button class="mark u ${q.answered&&q.choice==null?"chosen":""}" id="ans-unsure" ${q.answered?"disabled":""}><span class="sym">？</span><span class="lb">わからない</span></button>
     </div>
-    ${!q.answered?`<p class="muted">${exam?"試験モードでは正誤は最後にまとめて表示します。":"根拠を持って選んでください。"}</p>`
-      :exam?(S.error?`<div class="note">${esc(S.error)}</div><div class="row end"><button class="btn" id="retry">もう一度送信</button></div>`:`<p class="muted">記録しています…</p>`)
-      :last?`<div class="verdict ${last.correct?"ok":"ng"}"><b class="v">${last.correct?"正解":"不正解"}（正答：${last.answer?"○":"×"}）</b><p>${esc(last.exp)}</p>
-        <div class="others"><span>みんなの正答率 <b>${pct(st?.acc)}</b></span><span>みんなの時間 <b>${sec(st?.med)}</b></span><span>${st?.n||0}件の解答</span></div>
-        ${!last.correct?`<div class="row">${videoBtn(item.point_code,plabel(item.point_code)+" の解説動画")}</div>`:""}</div>
-        <div class="row end"><button class="btn" id="next">${q.i+1<q.order.length?"次の問題へ":"結果を見る"}</button></div>`
-      :(S.error?`<div class="note">${esc(S.error)}</div><div class="row end"><button class="btn" id="retry">もう一度送信</button></div>`:`<p class="muted">採点しています…</p>`)}
+    ${q.answered?(S.error?`<div class="note">${esc(S.error)}</div><div class="row end"><button class="btn" id="retry">もう一度送信</button></div>`:`<p class="muted">記録しています…</p>`)
+      :q.confirm?`<div class="confirm"><b>ここで終了して採点しますか？</b><span class="muted">解答済みの ${q.answers.filter(Boolean).length}問だけを採点します。最後まで解いていない試験はランキングの対象外です。</span>
+        <div class="row"><button class="btn small" id="stopYes">終了して採点する</button><button class="btn ghost small" id="stopNo">続ける</button></div></div>`
+      :`<div class="row between"><p class="muted">正誤は最後にまとめて表示します。</p>${q.i>0?`<button class="linkbtn" id="stop">ここで終了して採点する</button>`:""}</div>`}
   </section>`;
-  if(!q.answered){$("#ans-true").addEventListener("click",()=>answer(true));$("#ans-false").addEventListener("click",()=>answer(false))}
-  else if(last&&!exam){$("#next").addEventListener("click",next)}
+  if(!q.answered){
+    $("#ans-true").addEventListener("click",()=>answer(true));$("#ans-false").addEventListener("click",()=>answer(false));$("#ans-unsure").addEventListener("click",()=>answer(null));
+    const keep=()=>{const t=$("#tm").textContent;renderQuiz();$("#tm").textContent=t};
+    $("#stop")?.addEventListener("click",()=>{q.confirm=true;keep()});
+    $("#stopNo")?.addEventListener("click",()=>{q.confirm=false;keep()});
+    $("#stopYes")?.addEventListener("click",()=>{clearInterval(tick);q.stopped=q.order.length;q.order=q.order.slice(0,q.i);q.i=q.i-1;next()});
+  }
   $("#retry")?.addEventListener("click",()=>send(q.i));
 }
 function answer(v){
@@ -452,48 +486,52 @@ async function send(i){
   if(error||!data?.length){S.error="解答を保存できませんでした。通信状況を確認してください。"+(error?"（"+error.message+"）":"");renderQuiz();return}
   const r=data[0];
   q.answers[i]={qid:d.qid,choice:d.choice,correct:r.is_correct,answer:r.answer,exp:r.explanation,ms:d.ms};
-  if(q.mode==="exam")next();else renderQuiz();
+  next();
 }
 async function next(){
   const q=S.quiz;
   if(q.i+1<q.order.length){q.i++;showQuestion();window.scrollTo(0,0);return}
   q.done=true;
   await S.sb.from("sessions").update({finished_at:new Date().toISOString()}).eq("id",q.sid);
-  S.lastResult={answers:q.answers,mode:q.mode,rank:null};S.quiz=null;
+  S.lastResult={answers:q.answers.filter(Boolean),mode:"exam",rank:null,planned:q.stopped||q.order.length};S.quiz=null;
   app.innerHTML=`<section class="sheet"><h2>集計しています…</h2></section>`;
   await Promise.all([loadMine(),loadStats()]);S.teacherData=null;S.ranking=null;
-  if(q.mode==="exam"){const {data}=await S.sb.rpc("get_exam_ranking");const me=(data||[]).find(r=>r.is_me);S.lastResult.rank=me?{rank:+me.rank,total:data.length,best:me}:null}
+  {const {data}=await S.sb.rpc("get_exam_ranking");const me=(data||[]).find(r=>r.is_me);S.lastResult.rank=me?{rank:+me.rank,total:data.length,best:me}:null}
   setTab("home");render();window.scrollTo(0,0);
 }
 function renderResult(){
-  const R=S.lastResult,a=R.answers,score=a.filter(x=>x.correct).length,med=median(a.map(x=>x.ms)),total=a.reduce((x,y)=>x+y.ms,0);
+  const R=S.lastResult,a=R.answers,score=a.filter(x=>x.correct).length,nUn=a.filter(x=>x.choice==null).length,med=median(a.map(x=>x.ms)),total=a.reduce((x,y)=>x+y.ms,0);
   const wrongPts=[...new Set(a.filter(x=>!x.correct).map(x=>pointOf(x.qid)))];
+  const shown=R.filter==="wrong"?a.filter(x=>!x.correct):a;
   app.innerHTML=`<section class="sheet">
-    <div class="row"><span class="pill ${R.mode==="exam"?"e":"p"}">${R.mode==="exam"?"試験モード":"練習モード"}</span></div>
-    <h1>${score} / ${a.length} 問正解</h1>
+    <h1>${score} / ${a.length} 問正解${R.planned>a.length?`<span class="muted" style="font-size:14px;font-weight:400">（${R.planned}問中 ${a.length}問で終了）</span>`:""}</h1>
     <div class="stats">
-      <div class="stat"><div class="k">正答率</div><div class="v">${pct(score/a.length)}</div></div>
-      <div class="stat"><div class="k">時間（中央値）</div><div class="v">${(med/1000).toFixed(1)}<small> 秒</small></div></div>
+      <div class="stat"><div class="k">正答率</div><div class="v">${pct(a.length?score/a.length:null)}</div></div>
+      <div class="stat"><div class="k">わからない</div><div class="v">${nUn}<small> 問</small></div></div>
+      <div class="stat"><div class="k">時間（中央値）</div><div class="v">${med==null?"—":(med/1000).toFixed(1)}<small> 秒</small></div></div>
       <div class="stat"><div class="k">合計時間</div><div class="v">${(total/1000).toFixed(0)}<small> 秒</small></div></div>
-      ${R.mode==="exam"?`<div class="stat"><div class="k">ランキング（自己ベスト）</div><div class="v">${R.rank?R.rank.rank:"—"}<small> 位 / ${R.rank?R.rank.total:"—"}人</small></div></div>`:""}
+      <div class="stat"><div class="k">ランキング（自己ベスト）</div><div class="v">${R.rank?R.rank.rank:"—"}<small> 位 / ${R.rank?R.rank.total:"—"}人</small></div></div>
     </div>
-    <div class="row"><button class="btn ghost" id="home">記録を見る</button>${R.mode==="exam"?`<button class="btn ghost" id="rk">ランキングを見る</button>`:""}<button class="btn accent" id="again">もう一度</button></div>
+    ${a.length<10||R.planned>a.length?`<p class="muted">ランキングの対象は、10問以上を最後まで解いた試験です。</p>`:""}
+    <div class="row"><button class="btn ghost" id="home">記録を見る</button><button class="btn ghost" id="rk">ランキングを見る</button><button class="btn accent" id="again">同じ条件でもう一度</button></div>
   </section>
-  ${wrongPts.length?`<section class="sheet"><h2>見直す論点</h2>
-    <div class="list">${wrongPts.map(c=>`<div class="li"><span class="mk ng">×</span><div class="body"><b>${esc(plabel(c))}</b><span class="muted">${esc(S.points[c]?.description||"")}</span></div><span></span>
-      <div class="actions">${videoBtn(c)}<button class="btn ghost small" data-practice="${esc(c)}">この論点を練習</button></div></div>`).join("")}</div></section>`:""}
-  <section class="sheet"><h2>問題ごとの結果</h2>
-    <div class="list">${a.map((x,i)=>{const q=S.QMAP[x.qid],st=S.qstats[x.qid];return `<div class="li"><span class="mk ${x.correct?"ok":"ng"}">${x.correct?"○":"×"}</span>
+  ${wrongPts.length&&wrongPts.some(c=>safeUrl(S.points[c]?.video_url||""))?`<section class="sheet"><h2>見直す論点</h2>
+    <div class="list">${wrongPts.filter(c=>safeUrl(S.points[c]?.video_url||"")).map(c=>`<div class="li"><span class="mk ng">!</span><div class="body"><b>${esc(plabel(c))}</b><span class="muted">${esc(S.points[c]?.description||"")}</span></div><span></span>
+      <div class="actions">${videoBtn(c)}</div></div>`).join("")}</div></section>`:""}
+  <section class="sheet"><div class="row between"><h2>問題ごとの結果</h2>
+    <div class="seg" role="group" style="min-width:260px"><button data-f="all" aria-pressed="${R.filter!=="wrong"}">すべて</button><button data-f="wrong" aria-pressed="${R.filter==="wrong"}">間違い・わからない</button></div></div>
+    ${shown.length?`<div class="list">${shown.map(x=>{const q=S.QMAP[x.qid],st=S.qstats[x.qid],i=a.indexOf(x);return `<div class="li">${markOf(x)}
       <div class="body"><span class="muted">第${i+1}問・${esc(plabel(q.point_code))}</span><span>${esc(q.stem)}</span>
-        <details><summary>正答 ${x.answer?"○":"×"}／あなた ${x.choice?"○":"×"}　解説を見る</summary><p class="muted" style="margin-top:4px">${esc(x.exp)}</p></details>
-        <div class="kv"><span>みんなの正答率 <b>${pct(st?.acc)}</b></span><span>みんなの時間 <b>${sec(st?.med)}</b></span></div></div>
+        <details ${x.correct?"":"open"}><summary>正答 ${x.answer?"○":"×"}／あなた ${choiceLabel(x.choice)}　解説</summary><p class="muted" style="margin-top:4px">${esc(x.exp)}</p></details>
+        <div class="kv"><span>みんなの正答率 <b>${pct(st?.acc)}</b></span><span>みんなの「わからない」 <b>${pct(st?.unsure)}</b></span><span>みんなの時間 <b>${sec(st?.med)}</b></span></div></div>
       <span class="side">${sec(x.ms)}</span>
-      ${!x.correct&&safeUrl(S.points[q.point_code]?.video_url||"")?`<div class="actions">${videoBtn(q.point_code)}</div>`:""}</div>`}).join("")}</div>
+      ${!x.correct&&safeUrl(S.points[q.point_code]?.video_url||"")?`<div class="actions">${videoBtn(q.point_code)}</div>`:""}</div>`}).join("")}</div>`
+    :`<div class="empty">間違えた問題・わからなかった問題はありません。</div>`}
   </section>`;
   $("#home").addEventListener("click",()=>{S.lastResult=null;render();window.scrollTo(0,0)});
-  $("#rk")?.addEventListener("click",()=>{S.lastResult=null;S.rankTab="exam";setTab("ranking");render();window.scrollTo(0,0)});
-  $("#again").addEventListener("click",()=>startQuiz(R.mode,R.mode==="practice"?S.practicePoint:""));
-  document.querySelectorAll("[data-practice]").forEach(b=>b.addEventListener("click",()=>{S.practicePoint=b.dataset.practice;startQuiz("practice",b.dataset.practice)}));
+  $("#rk").addEventListener("click",()=>{S.lastResult=null;S.rankTab="exam";setTab("ranking");render();window.scrollTo(0,0)});
+  $("#again").addEventListener("click",()=>{S.lastResult=null;render();startQuiz()});
+  document.querySelectorAll("[data-f]").forEach(b=>b.addEventListener("click",()=>{S.lastResult.filter=b.dataset.f;renderResult()}));
 }
 
 /* ===== ランキング ===== */
@@ -507,8 +545,8 @@ function renderRanking(){
   const R=S.ranking,exam=S.rankTab==="exam",rows=exam?R.exam:R.activity;
   app.innerHTML=`<section class="sheet">
     <h1>ランキング</h1>
-    <div class="seg" role="group"><button data-rt="exam" aria-pressed="${exam}">試験（正答率×速さ）</button><button data-rt="activity" aria-pressed="${!exam}">よく解いた人（30日）</button></div>
-    <p class="muted">${exam?"試験モードの自己ベストで比べます。正答率が高い順、同じ正答率なら合計時間が短い順です。練習モードは対象外です。":"直近30日に解いた問題数（練習・試験の合計）の順です。"}</p>
+    <div class="seg" role="group"><button data-rt="exam" aria-pressed="${exam}">正答率×速さ</button><button data-rt="activity" aria-pressed="${!exam}">よく解いた人（30日）</button></div>
+    <p class="muted">${exam?"10問以上を最後まで解いた試験の自己ベストで比べます。正答率が高い順、同じ正答率なら1問あたりの解答時間（中央値）が短い順です。「わからない」は不正解として数えます。":"直近30日に解いた問題数の順です。"}</p>
     ${R.error?`<div class="note">${esc(R.error)}</div>`:""}
     ${rows.length?`<div class="list">${rows.map(r=>`<div class="li ${r.is_me?"me":""}"><span class="rank ${+r.rank===1?"r1":""}">${r.rank}</span>
       <div class="body"><b>${esc(r.display_name)}${r.is_me?"（あなた）":""}</b>
@@ -545,7 +583,7 @@ function sampleStudents(){ // 画面確認用の架空データ。保存はし�
   const names=["サンプルA","サンプルB","サンプルC","サンプルD","サンプルE","サンプルF"],skill=[.9,.75,.6,.5,.8,.4],speed=[18,30,25,40,55,15];
   let seed=7;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
   return names.map((n,k)=>{const ans=[];for(let s=0;s<2;s++)S.questions.forEach((q,j)=>{const p=Math.min(.98,skill[k]*(1-j*.05)+.15);
-    ans.push({sid:"x"+s,qid:q.id,correct:rnd()<p,ms:Math.round((speed[k]+rnd()*20)*(q.level==="応用"?1.6:1)*1000)})});
+    const ok=rnd()<p,un=!ok&&rnd()<.35;ans.push({sid:"x"+s,qid:q.id,correct:ok,choice:ok?true:un?null:false,ms:Math.round((speed[k]+rnd()*20)*(q.level==="応用"?1.6:1)*1000)})});
     return {uid:"sample"+k,name:n,ans}});
 }
 function teacherModel(students){
@@ -554,7 +592,7 @@ function teacherModel(students){
   const pMed={};P.forEach(c=>{pMed[c]=medT(all.filter(a=>pointOf(a.qid)===c))});
   students.forEach(s=>{
     s.sessions=new Set(s.ans.map(a=>a.sid)).size;
-    s.acc=s.ans.filter(a=>a.correct).length/s.ans.length;s.t=medT(s.ans);
+    s.acc=s.ans.filter(a=>a.correct).length/s.ans.length;s.un=unsure(s.ans);s.t=medT(s.ans);
     s.points=P.map(c=>{const a=s.ans.filter(x=>pointOf(x.qid)===c);if(!a.length)return {code:c,n:0};
       const ac=a.filter(x=>x.correct).length/a.length,tm=medT(a);
       return {code:c,n:a.length,ac,tm,d:diagnose(ac,tm,(pMed[c]||SLOW_MS)*1.2)}});
@@ -592,7 +630,7 @@ function renderTeacher(){
   ${has?`<section class="sheet"><h2>受講者一覧</h2>
     <p class="muted">偏差値は全員の正答率から算出（50＋10×（本人−平均）÷標準偏差）。時間は中央値。押すと個別の分析を表示します。</p>
     <div class="list">${M.students.map(s=>`<div class="li click" tabindex="0" data-uid="${esc(s.uid)}"><span class="rank">${s.dev.toFixed(0)}</span>
-      <div class="body"><b>${esc(s.name)}</b><div class="kv"><span>正答率 <b>${pct(s.acc)}</b></span><span>時間 <b>${sec(s.t)}</b></span><span><b>${s.ans.length}</b>問・${s.sessions}回</span></div>
+      <div class="body"><b>${esc(s.name)}</b><div class="kv"><span>正答率 <b>${pct(s.acc)}</b></span><span>わからない <b>${pct(s.un)}</b></span><span>時間 <b>${sec(s.t)}</b></span><span><b>${s.ans.length}</b>問・${s.sessions}回</span></div>
       ${s.weak?`<span class="muted">弱点：${esc(plabel(s.weak.code))} ${tagHtml(s.weak.d)}</span>`:""}</div><span class="side">偏差値</span></div>`).join("")}</div></section>
   <section class="sheet"><h2>学習ポイント × 受講者</h2>
     <div class="legend"><span>${tagHtml({c:"red",l:"理解不足",h:""})} 遅く誤答が多い</span><span>${tagHtml({c:"amber",l:"早とちり",h:""})} 速いが誤答が多い</span><span>${tagHtml({c:"blue",l:"定着不足",h:""})} 正解だが遅い</span><span>${tagHtml({c:"green",l:"安定",h:""})}</span></div>

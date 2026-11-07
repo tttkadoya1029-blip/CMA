@@ -38,14 +38,18 @@ const URL_=`http://localhost:${server.address().port}/`;
       await page.evaluate(()=>localStorage.setItem("stub_logged","1"));await page.reload();await page.waitForTimeout(300);
       if(role==="student"){
         await shot("02-home");
-        await page.click("#startP");await page.waitForTimeout(300);await shot("03-question");
-        await page.click("#ans-false");await page.waitForTimeout(300);await shot("04-feedback");
-        for(let i=0;i<10;i++){const nx=await page.$("#next");if(!nx)break;await nx.click();await page.waitForTimeout(150);const t=await page.$("#ans-true");if(t){await t.click();await page.waitForTimeout(150)}}
-        await page.waitForTimeout(300);await shot("05-result");
-        await page.click('[data-view="ranking"]');await page.waitForTimeout(300);await shot("06-ranking");
-        await page.click('[data-view="home"]');await page.click("#startE");await page.waitForTimeout(200);await shot("07-exam");
-        for(let i=0;i<10;i++){const t=await page.$("#ans-true:not([disabled])");if(!t)break;await t.click();await page.waitForTimeout(200)}
-        await page.waitForTimeout(400);await shot("08-exam-result");
+        await page.fill("#cnum","3");await page.press("#cnum","Enter");await page.locator("#cnum").blur();await page.waitForTimeout(150);
+        const label=await page.textContent("#startE");if(!label.includes("3問"))problems.push(`[${vp.name}] 問題数の自由指定が反映されません: ${label}`);
+        await shot("02b-home-count");
+        await page.click("#startE");await page.waitForTimeout(300);await shot("03-question");
+        const qn=await page.textContent(".qno");if(!/\/ 3/.test(qn))problems.push(`[${vp.name}] 出題数が3問になっていません: ${qn}`);
+        for(const id of ["#ans-true","#ans-false","#ans-unsure"]){await page.click(id);await page.waitForTimeout(250)}
+        await page.waitForTimeout(400);await shot("05-result");
+        await page.click('[data-f="wrong"]');await page.waitForTimeout(150);await shot("05b-result-wrong");
+        await page.click("#rk");await page.waitForTimeout(300);await shot("06-ranking");
+        await page.click('[data-view="home"]');await page.waitForTimeout(200);await page.click('[data-count="all"]').catch(()=>{});await page.click("#startE");await page.waitForTimeout(300);
+        await page.click("#ans-true");await page.waitForTimeout(300);await page.click("#stop");await page.waitForTimeout(150);await shot("07-stop-confirm");
+        await page.click("#stopYes");await page.waitForTimeout(500);await shot("08-exam-result");
       }else{
         await page.click('[data-view="teacher"]');await page.waitForTimeout(400);await shot("11-teacher");
         await page.click("#smp");await page.waitForTimeout(300);await shot("12-teacher-sample");
